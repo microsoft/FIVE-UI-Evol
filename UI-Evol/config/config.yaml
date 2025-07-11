@@ -1,0 +1,35 @@
+models:
+  critic_model: "gpt-4o-0806-global"
+  retrace_model: "o3"
+
+
+azure_openai:
+  api_version: "2025-01-01-preview"
+  endpoints:
+    gpt4o:
+      - "https://your-openai-instance-1.openai.azure.com/"
+      - "https://your-openai-instance-2.openai.azure.com/"
+      - "https://your-openai-instance-3.openai.azure.com/"
+    o3:
+      - "https://your-o3-instance-1.openai.azure.com/"
+      - "https://your-o3-instance-2.openai.azure.com/"
+      - "https://your-o3-instance-3.openai.azure.com/"
+
+
+performance:
+  max_workers: 12
+
+
+paths:
+  history_path: "/path/to/your/data/directory"
+  domains:
+    - "vs_code"
+    - "chrome"
+    - "gimp"
+    - "libreoffice_calc"
+    - "libreoffice_impress"
+    - "libreoffice_writer"
+    - "multi_apps"
+    - "os"
+    - "thunderbird"
+    - "vlc"
