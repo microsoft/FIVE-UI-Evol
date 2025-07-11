@@ -1,8 +1,8 @@
 # Datasets & Benchmarks
-### UI-E2I-Synth - Advancing GUI Grounding with Large-Scale Instruction Synthesis ([repo](https://github.com/microsoft/E2I-Synth/tree/main/UI-E2I-Synth))
+### UI-E2I-Synth - Advancing GUI Grounding with Large-Scale Instruction Synthesis ([repo](https://github.com/microsoft/E2I-Synth/tree/main/UI-E2I-Synth)) ([paper](https://arxiv.org/abs/2504.11257)) ([huggingface](https://huggingface.co/datasets/vaundys/I2E-Bench))
 
 # Workflows
-### UI-Evol - Automatic Knowledge Evolving for Computer Use Agents ([repo](https://github.com/microsoft/E2I-Synth/tree/main/UI-Evol))
+### UI-Evol - Automatic Knowledge Evolving for Computer Use Agents ([repo](https://github.com/microsoft/E2I-Synth/tree/main/UI-Evol)) ([paper](https://arxiv.org/abs/2505.21964))
 
 ## News
 - July, 2025: [**UI-E2I-Synth**](https://github.com/microsoft/E2I-Synth/tree/main/UI-E2I-Synth) was released!
