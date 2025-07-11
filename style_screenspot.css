@@ -1,0 +1,162 @@
+body {
+  font-family: sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #ffffff;
+  color: #000000;
+}
+
+table {
+  font-family: 'Jost', sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  background-color: #ffffff;
+  color: #333333;
+  border-collapse: collapse;
+  width: 100%;
+
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 10px; /* Round the corners of the table */
+  overflow: hidden; /* Ensure the rounded corners are applied properly */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1); /* Soft shadow around the table */
+}
+
+td.table-value {
+  font-weight: normal;
+}
+
+td.table-value.normal-value {
+  font-weight: 500;
+}
+
+td.table-value.sub-avg-value {
+  font-weight: 600;
+  font-style: italic;
+}
+
+td.table-value.overall-avg-value {
+  font-weight: bold;
+
+}
+
+#content {
+  width: 75%;
+  margin: 0 auto;
+}
+
+th, td {
+  padding: 12px;
+  text-align: center;
+  border: 1px solid #ddd;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+th {
+  background-color: #f5f5f5;
+  color: #555;
+  font-size: 16px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+td {
+  font-size: 14px;
+}
+
+td.table-value.model-name{
+  text-align: left;
+}
+
+tr{
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+tr:hover {
+  transition: background-color 0.3s ease;
+  background-color: #e9f1f7;
+}
+
+
+thead {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  
+}
+
+table th,
+table td {
+  word-wrap: break-word;
+}
+
+.table-header {
+  background-color: #e6f7ff;
+  font-weight: 400;
+}
+
+th.sorted-asc::after {
+  content: "▲";
+}
+th.sorted-desc::after {
+  content: "▼";
+}
+
+#notes {
+  font-size: 1em;
+}
+
+#notes h3 {
+  margin-top: 1em;
+  font-size: 2em;
+  text-align: center;
+}
+
+#notes li {
+  font-size: 1.2em;
+  font-weight: 300;
+  margin: 1em;
+}
+
+.form-select {
+  font-size: 1em;
+}
+
+pre.citation{
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+@media screen and (max-width: 1400px) {
+  body {
+    font-size: 1.6vw;
+  }
+
+  #content {
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 2em;
+  }
+
+  h2 {
+    font-size: 1.6em;
+  }
+
+  h3 {
+    font-size: 1.2em;
+  }
+
+  table {
+    font-size: small;
+  }
+}
