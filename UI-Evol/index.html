@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试网页 - Test Page</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.2em;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 16px;
+            backdrop-filter: blur(5px);
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #00b894, #00a085);
+        }
+
+        .btn-info {
+            background: linear-gradient(45deg, #0984e3, #74b9ff);
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #fdcb6e, #e17055);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #00b894, #00a085);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .color-picker-demo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 10px 0;
+        }
+
+        .color-display {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 3px solid white;
+            transition: all 0.3s ease;
+        }
+
+        .slider-container {
+            margin: 15px 0;
+        }
+
+        .slider {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        .output-area {
+            background: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            min-height: 100px;
+            white-space: pre-wrap;
+            margin-top: 15px;
+        }
+
+        .interactive-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .time-display {
+            font-size: 1.5em;
+            color: white;
+            text-align: center;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .interactive-buttons {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 测试网页</h1>
+            <p>一个功能齐全的交互式测试页面</p>
+            <div class="time-display" id="currentTime"></div>
+        </div>
+
+        <div class="content-grid">
+            <!-- 表单测试卡片 -->
+            <div class="card">
+                <h2>📝 表单测试</h2>
+                <form id="testForm">
+                    <div class="form-group">
+                        <label for="name">姓名：</label>
+                        <input type="text" id="name" name="name" placeholder="请输入您的姓名">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="email">邮箱：</label>
+                        <input type="email" id="email" name="email" placeholder="example@email.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="age">年龄：</label>
+                        <input type="number" id="age" name="age" min="1" max="120" placeholder="请输入年龄">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="city">城市：</label>
+                        <select id="city" name="city">
+                            <option value="">请选择城市</option>
+                            <option value="beijing">北京</option>
+                            <option value="shanghai">上海</option>
+                            <option value="guangzhou">广州</option>
+                            <option value="shenzhen">深圳</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="message">留言：</label>
+                        <textarea id="message" name="message" rows="3" placeholder="请输入您的留言..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn">提交表单</button>
+                    <button type="reset" class="btn btn-warning">重置</button>
+                </form>
+            </div>
+
+            <!-- 交互功能卡片 -->
+            <div class="card">
+                <h2>🎮 交互功能</h2>
+                
+                <div class="interactive-buttons">
+                    <button class="btn btn-success" onclick="showAlert()">显示警告</button>
+                    <button class="btn btn-info" onclick="changeBackground()">变换背景</button>
+                    <button class="btn btn-warning" onclick="playSound()">播放声音</button>
+                </div>
+                
+                <div class="color-picker-demo">
+                    <label style="color: white;">选择颜色：</label>
+                    <input type="color" id="colorPicker" value="#ff6b6b" onchange="updateColorDisplay()">
+                    <div class="color-display" id="colorDisplay"></div>
+                </div>
+                
+                <div class="slider-container">
+                    <label style="color: white;">透明度: <span id="opacityValue">50</span>%</label>
+                    <input type="range" id="opacitySlider" class="slider" min="0" max="100" value="50" oninput="updateOpacity()">
+                </div>
+                
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <button class="btn" onclick="startProgress()">开始进度条</button>
+            </div>
+
+            <!-- 计算器卡片 -->
+            <div class="card">
+                <h2>🧮 简单计算器</h2>
+                <div class="form-group">
+                    <input type="number" id="num1" placeholder="第一个数字">
+                </div>
+                <div class="form-group">
+                    <select id="operation">
+                        <option value="+">加法 (+)</option>
+                        <option value="-">减法 (-)</option>
+                        <option value="*">乘法 (×)</option>
+                        <option value="/">除法 (÷)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <input type="number" id="num2" placeholder="第二个数字">
+                </div>
+                <button class="btn" onclick="calculate()">计算</button>
+                <button class="btn btn-warning" onclick="clearCalculator()">清除</button>
+                <div id="calcResult" style="color: white; margin-top: 15px; font-size: 1.2em; font-weight: bold;"></div>
+            </div>
+
+            <!-- 信息显示卡片 -->
+            <div class="card">
+                <h2>📊 系统信息</h2>
+                <div style="color: white;">
+                    <p><strong>浏览器：</strong> <span id="browserInfo"></span></p>
+                    <p><strong>屏幕分辨率：</strong> <span id="screenInfo"></span></p>
+                    <p><strong>当前时间：</strong> <span id="currentDateTime"></span></p>
+                    <p><strong>页面加载时间：</strong> <span id="loadTime"></span></p>
+                </div>
+                
+                <button class="btn btn-info" onclick="refreshInfo()">刷新信息</button>
+                <button class="btn btn-success" onclick="testConnection()">测试连接</button>
+                
+                <div class="output-area" id="outputArea">
+测试输出区域...
+点击上面的按钮查看不同的功能测试结果。
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 页面加载时间
+        const loadStartTime = Date.now();
+        
+        // 更新实时时间
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('currentTime').textContent = now.toLocaleString('zh-CN');
+            document.getElementById('currentDateTime').textContent = now.toLocaleString('zh-CN');
+        }
+        
+        // 初始化页面
+        window.onload = function() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            
+            // 显示页面加载时间
+            const loadTime = Date.now() - loadStartTime;
+            document.getElementById('loadTime').textContent = loadTime + ' ms';
+            
+            // 显示浏览器信息
+            document.getElementById('browserInfo').textContent = navigator.userAgent.split(' ')[0];
+            document.getElementById('screenInfo').textContent = screen.width + ' × ' + screen.height;
+            
+            // 初始化颜色显示
+            updateColorDisplay();
+        };
+        
+        // 表单提交处理
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            let output = '表单提交成功！\n提交的数据：\n';
+            for (let [key, value] of formData.entries()) {
+                output += `${key}: ${value}\n`;
+            }
+            document.getElementById('outputArea').textContent = output;
+        });
+        
+        // 交互功能
+        function showAlert() {
+            alert('这是一个测试警告框！\n功能正常工作 ✅');
+        }
+        
+        function changeBackground() {
+            const colors = [
+                'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
+            ];
+            const randomColor = colors[Math.floor(Math.random() * colors.length)];
+            document.body.style.background = randomColor;
+            document.getElementById('outputArea').textContent = '背景颜色已更换！\n新的渐变色已应用。';
+        }
+        
+        function playSound() {
+            // 创建音频上下文（简单的提示音）
+            if (typeof(Audio) !== "undefined") {
+                // 创建一个简单的提示音
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.value = 800;
+                oscillator.type = 'sine';
+                
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+                
+                document.getElementById('outputArea').textContent = '播放提示音成功！\n音频功能正常工作 🔊';
+            } else {
+                document.getElementById('outputArea').textContent = '音频功能不支持\n浏览器不支持 Web Audio API';
+            }
+        }
+        
+        // 颜色选择器
+        function updateColorDisplay() {
+            const color = document.getElementById('colorPicker').value;
+            document.getElementById('colorDisplay').style.backgroundColor = color;
+        }
+        
+        // 透明度滑块
+        function updateOpacity() {
+            const opacity = document.getElementById('opacitySlider').value;
+            document.getElementById('opacityValue').textContent = opacity;
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                card.style.opacity = opacity / 100;
+            });
+        }
+        
+        // 进度条动画
+        function startProgress() {
+            const progressFill = document.getElementById('progressFill');
+            let width = 0;
+            const interval = setInterval(() => {
+                if (width >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        progressFill.style.width = '0%';
+                    }, 1000);
+                } else {
+                    width += 2;
+                    progressFill.style.width = width + '%';
+                }
+            }, 50);
+        }
+        
+        // 计算器功能
+        function calculate() {
+            const num1 = parseFloat(document.getElementById('num1').value);
+            const num2 = parseFloat(document.getElementById('num2').value);
+            const operation = document.getElementById('operation').value;
+            
+            if (isNaN(num1) || isNaN(num2)) {
+                document.getElementById('calcResult').textContent = '请输入有效的数字！';
+                return;
+            }
+            
+            let result;
+            switch (operation) {
+                case '+':
+                    result = num1 + num2;
+                    break;
+                case '-':
+                    result = num1 - num2;
+                    break;
+                case '*':
+                    result = num1 * num2;
+                    break;
+                case '/':
+                    if (num2 === 0) {
+                        document.getElementById('calcResult').textContent = '除数不能为零！';
+                        return;
+                    }
+                    result = num1 / num2;
+                    break;
+            }
+            
+            document.getElementById('calcResult').textContent = `结果: ${result}`;
+        }
+        
+        function clearCalculator() {
+            document.getElementById('num1').value = '';
+            document.getElementById('num2').value = '';
+            document.getElementById('calcResult').textContent = '';
+        }
+        
+        // 刷新系统信息
+        function refreshInfo() {
+            updateTime();
+            document.getElementById('browserInfo').textContent = navigator.userAgent.split(' ')[0];
+            document.getElementById('screenInfo').textContent = screen.width + ' × ' + screen.height;
+            document.getElementById('outputArea').textContent = '系统信息已刷新！\n时间: ' + new Date().toLocaleString('zh-CN');
+        }
+        
+        // 测试网络连接
+        function testConnection() {
+            const startTime = Date.now();
+            fetch('https://httpbin.org/get')
+                .then(response => response.json())
+                .then(data => {
+                    const endTime = Date.now();
+                    const responseTime = endTime - startTime;
+                    document.getElementById('outputArea').textContent = 
+                        `网络连接测试成功！\n响应时间: ${responseTime}ms\n状态: 连接正常 ✅\n服务器IP: ${data.origin}`;
+                })
+                .catch(error => {
+                    const endTime = Date.now();
+                    const responseTime = endTime - startTime;
+                    document.getElementById('outputArea').textContent = 
+                        `网络连接测试失败！\n响应时间: ${responseTime}ms\n错误: ${error.message}\n状态: 连接异常 ❌`;
+                });
+        }
+    </script>
+</body>
+</html>
