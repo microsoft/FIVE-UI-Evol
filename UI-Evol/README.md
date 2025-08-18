@@ -46,59 +46,19 @@ cd src
 python batch_processor.py
 ```
 
-## Trace Introduction
+## Example Trace Running
 
-This section is to introduce the file structure and usage of UI-Evol Trace Files.
+We have prepared a quick example trace collected from OSWorld under /example to fast try our system.
 
-### File Structure
-- software/ (chrome, gimp, libreoffice ...)
-    - task_id/  
-        - results.txt : This file contains the overall results of the task. Usually, 1 represents success and others represent different types of failures.
-        - step_X_timestamp.png : These files are screenshots taken before each step of the task.
-        - traj.jsonl : This file is the main trajectory file that contains the detailed information about the task execution.
+All you need to do is:
 
-### traj.jsonl 
+1. Prepare environment as mentioned above. (Remember to set YOUR_WORKING_DIR/example as history_path in config/config.yaml)
 
-The traj.jsonl usually contains a list of JSON objects, each representing a step in the task execution.
-Important fields in each JSON object: 
-- `action` : The action taken in this step.
-- `step_num` : The step number in the task execution, starting from 1.
-- `introduction` : The introduction for OSWorld task.
-- `screenshot_file` : The screenshot taken after this step.
-- `agent-s-info["goal_plan"]` : The plan for achieving the goal in the rest of the task. For Step 1 in each task, this represents our knowledge given for this specific task.
-- `agent-s-info["subtask"]` : The current subtask being executed.
-- `agent-s-info["executor_plan"]` : AgentS's thought process for this step.
+2. Simply run the batch_processing.py script in /src
 
-### Usage Example
+3. Wait and See Output from terminal: It will consist of two parts, the Retrace Stage Output followed by "actionlist" and the Critic Stage Output followed by "result".
 
-Here is a short Python example for accessing these fields in traj.jsonl:
-
-```python
-import json
-
-traj_path = "software/<software_name>/<task_id>/traj.jsonl"
-
-with open(traj_path, "r", encoding="utf-8") as f:
-        for line in f:
-                step = json.loads(line)
-                action = step.get("action")
-                step_num = step.get("step_num")
-                introduction = step.get("introduction")
-                screenshot_file_after = step.get("screenshot_file")
-                agent_info = step.get("agent-s-info", {})
-                goal_plan = agent_info.get("goal_plan")
-                subtask = agent_info.get("subtask")
-                executor_plan = agent_info.get("executor_plan")
-                
-                print(f"Step {step_num}:")
-                print(f"  Action: {action}")
-                print(f"  Introduction: {introduction}")
-                print(f"  After Screenshot: {screenshot_file}")
-                print(f"  Goal Plan: {goal_plan}")
-                print(f"  Subtask: {subtask}")
-                print(f"  Executor Plan: {executor_plan}")
-```
-
+4. After the process is complete, you can find the full output "result.jsonl" under /example, including all processing log and Final Evolved Knowledge.
 
 ## License
 

@@ -35,7 +35,7 @@ class BatchProcessor:
         json_path = os.path.join(history_path, "result.jsonl")
         result_to_save = {instruction: record_log}
         with self.lock2:
-            with open(json_path, 'a') as json_file:
+            with open(json_path, 'a', encoding='utf-8') as json_file:
                 json.dump(result_to_save, json_file, indent=4, ensure_ascii=False)
                 json_file.write("\n")
 
