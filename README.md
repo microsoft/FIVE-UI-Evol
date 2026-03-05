@@ -2,11 +2,15 @@
 
 ## Content
 
-+ UI-E2I-Synth (ACL findings 2025): Challenging GUI-Grounding Benchmark and Complex Instruction Synthesis.
++ InfiniteWeb: Scalable Web Environment Synthesis for GUI Agent Training.
+
++ UI-E2I-Synth (ACL Findings 2025): Challenging GUI-Grounding Benchmark and Complex Instruction Synthesis.
 
 + UI-Evol (ICML 2025 Computer Use Workshop): 30.1% success rate on OS-World! Learning knowledge from previous trajectory.
 
 ## News
+- March, 2026: [**InfiniteWeb**](https://github.com/microsoft/FIVE-UI-Evol/tree/main/InfiniteWeb) was released! Explore generated websites at [infiniteweb-ai.github.io](https://infiniteweb-ai.github.io/).
+
 - July, 2025: [**UI-E2I-Synth**](https://github.com/microsoft/FIVE-UI-Evol/tree/main/UI-E2I-Synth) was released!
 
 - July, 2025: [**UI-Evol**](https://github.com/microsoft/FIVE-UI-Evol/tree/main/UI-Evol) was released!

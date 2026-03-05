@@ -1,0 +1,15 @@
+# Core dependencies for UI Simulator
+openai>=1.0.0
+azure-identity>=1.15.0
+
+# Optional dependencies for enhanced functionality
+Pillow>=10.0.0  # For image processing if needed
+requests>=2.31.0  # For HTTP requests
+playwright>=1.40.0  # For webpage screenshots during polish
+aiohttp>=3.8.0  # For async HTTP requests in image replacer
+
+# Local syntax validation dependencies
+html5lib>=0.999999999  # HTML5 parser and validator
+tinycss2>=1.2.1  # CSS parser and validator
+beautifulsoup4>=4.12.0  # HTML parsing and manipulation
+esprima>=4.0.1  # JavaScript parser and validator

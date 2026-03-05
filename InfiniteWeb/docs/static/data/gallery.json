@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "ecommerce_storefront",
+      "title": "E-commerce Storefront",
+      "description": "Browse products, manage shopping cart, complete checkout with payment processing.",
+      "tags": ["e-commerce", "checkout", "forms", "multi-step"],
+      "thumbnail": "static/images/thumbs/ecommerce.png",
+      "demoUrl": "demos/placeholder/index.html",
+      "taskCount": 8,
+      "pageCount": 5
+    },
+    {
+      "id": "task_manager",
+      "title": "Task Manager Dashboard",
+      "description": "Create projects, assign tasks, track progress with kanban boards and analytics.",
+      "tags": ["dashboard", "task manager", "productivity", "forms"],
+      "thumbnail": "static/images/thumbs/taskmanager.png",
+      "demoUrl": "demos/placeholder/index.html",
+      "taskCount": 10,
+      "pageCount": 4
+    },
+    {
+      "id": "restaurant_booking",
+      "title": "Restaurant Booking Platform",
+      "description": "Browse menus, make reservations, leave reviews, and manage dietary preferences.",
+      "tags": ["restaurant", "booking", "food", "reviews"],
+      "thumbnail": "static/images/thumbs/restaurant.png",
+      "demoUrl": "demos/placeholder/index.html",
+      "taskCount": 7,
+      "pageCount": 4
+    },
+    {
+      "id": "travel_agency",
+      "title": "Travel Agency Website",
+      "description": "Search destinations, book flights and hotels, manage itineraries, and handle payments.",
+      "tags": ["travel", "booking", "search", "multi-step"],
+      "thumbnail": "static/images/thumbs/travel.png",
+      "demoUrl": "demos/placeholder/index.html",
+      "taskCount": 9,
+      "pageCount": 6
+    },
+    {
+      "id": "blog_platform",
+      "title": "Blog & Content Platform",
+      "description": "Create posts, manage categories, comment system, user profiles, and content search.",
+      "tags": ["blog", "content", "social", "search"],
+      "thumbnail": "static/images/thumbs/blog.png",
+      "demoUrl": "demos/placeholder/index.html",
+      "taskCount": 8,
+      "pageCount": 5
+    },
+    {
+      "id": "education_portal",
+      "title": "Online Education Portal",
+      "description": "Browse courses, enroll students, track progress, submit assignments, and view grades.",
+      "tags": ["education", "courses", "dashboard", "forms"],
+      "thumbnail": "static/images/thumbs/education.png",
+      "demoUrl": "demos/placeholder/index.html",
+      "taskCount": 10,
+      "pageCount": 6
+    },
+    {
+      "id": "portfolio_website",
+      "title": "Creative Portfolio",
+      "description": "Showcase projects, manage galleries, contact form, and client testimonials.",
+      "tags": ["portfolio", "gallery", "creative", "contact"],
+      "thumbnail": "static/images/thumbs/portfolio.png",
+      "demoUrl": "demos/placeholder/index.html",
+      "taskCount": 6,
+      "pageCount": 4
+    },
+    {
+      "id": "crm_dashboard",
+      "title": "CRM Dashboard",
+      "description": "Manage contacts, track deals pipeline, schedule activities, and generate reports.",
+      "tags": ["CRM", "dashboard", "business", "analytics"],
+      "thumbnail": "static/images/thumbs/crm.png",
+      "demoUrl": "demos/placeholder/index.html",
+      "taskCount": 9,
+      "pageCount": 5
+    }
+  ]
+}

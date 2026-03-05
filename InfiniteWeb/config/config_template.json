@@ -1,0 +1,126 @@
+{
+    "output_dir": "results/generated",
+    "log_level": "DEBUG",
+    "max_fix_iterations": 8,
+    "temperature": 0.7,
+    "task_count_range": "8-10",
+    "design_image_path": "resource/music.png",
+    "website_type": "online music website",
+    "custom_task_names": [],
+    "max_pages": 12,
+    "deployment": "gpt-5",
+    "endpoints": [
+        "YOUR_AZURE_OPENAI_ENDPOINT"
+    ],
+    "load_balance_strategy": "round_robin",
+    "max_retries": 20,
+    "retry_delay": 1.0,
+    "max_data_items": 20,
+    "max_concurrent": 18,
+    "image_mode": "Real",
+    "use_batch_image_engine": false,
+    "skip_tdd_validation": false,
+    "pexels_api_key": "YOUR_PEXELS_API_KEY",
+    "freesound_api_key": "YOUR_FREESOUND_API_KEY",
+    "youtube_api_key": "YOUR_YOUTUBE_API_KEY",
+    "google_api_key": "YOUR_GOOGLE_API_KEY",
+    "google_cse_cx": "YOUR_GOOGLE_CSE_CX",
+    "task_rewriting": {
+        "include_full_data": true,
+        "max_items_per_entity": -1
+    },
+    "stage_configs": {
+        "task_generator": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "primary_architecture": {
+            "model": "gpt-5",
+            "reasoning_effort": "high"
+        },
+        "data_extractor": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "interface_designer": {
+            "model": "gpt-5",
+            "reasoning_effort": "high"
+        },
+        "interface_merger": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "architecture_designer": {
+            "model": "gpt-5",
+            "reasoning_effort": "high"
+        },
+        "page_designer": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "design_analyzer": {
+            "model": "gpt-5",
+            "reasoning_effort": "low"
+        },
+        "layout_designer": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "framework_generator": {
+            "model": "gpt-5",
+            "reasoning_effort": "low"
+        },
+        "page_generator": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "parallel_generator": {
+            "model": "gpt-5",
+            "reasoning_effort": "high"
+        },
+        "data_generator": {
+            "model": "gpt-5",
+            "reasoning_effort": "low"
+        },
+        "test_validator": {
+            "model": "gpt-5",
+            "reasoning_effort": "high"
+        },
+        "instrumentation_analyzer": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "instrumentation_generator": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "instrumentation_validator": {
+            "model": "gpt-5",
+            "reasoning_effort": "high"
+        },
+        "instrumentation_evaluator": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "resource_replacer": {
+            "model": "gpt-5",
+            "reasoning_effort": "low"
+        },
+        "syntax_fixer": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "task_rewriter": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "evaluator_generator": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        },
+        "instrumentation": {
+            "model": "gpt-5",
+            "reasoning_effort": "medium"
+        }
+    }
+}

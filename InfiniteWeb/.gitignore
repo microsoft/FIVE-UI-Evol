@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+results/
+agents_result/
+paper/
+scripts/
+.playwright-mcp/
