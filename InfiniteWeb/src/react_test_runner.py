@@ -22,6 +22,7 @@ import glob
 import json
 import os
 import re
+import signal
 import sys
 import time
 from dataclasses import dataclass
@@ -202,13 +203,14 @@ async def execute_bash(command: str, working_dir: str, env: dict, timeout: int =
             stderr=asyncio.subprocess.STDOUT,  # merge stderr into stdout
             cwd=working_dir,
             env=env,
+            preexec_fn=os.setsid,
         )
 
         try:
             stdout, _ = await asyncio.wait_for(process.communicate(), timeout)
         except asyncio.TimeoutError:
             try:
-                process.kill()
+                os.killpg(os.getpgid(process.pid), signal.SIGKILL)
                 await process.wait()
             except Exception:
                 pass
@@ -310,7 +312,8 @@ async def exec_playwright(
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
             env=env,
-            cwd=working_dir
+            cwd=working_dir,
+            preexec_fn=os.setsid,
         )
 
         stdout, stderr = await asyncio.wait_for(
@@ -324,7 +327,7 @@ async def exec_playwright(
 
     except asyncio.TimeoutError:
         try:
-            process.kill()
+            os.killpg(os.getpgid(process.pid), signal.SIGKILL)
             await process.wait()
         except Exception:
             pass
@@ -334,9 +337,20 @@ async def exec_playwright(
 
 
 async def cleanup_playwright_session(session_id: str, env: dict, working_dir: str):
-    """Force close a playwright-cli session."""
+    """Force close a playwright-cli session and kill any orphaned browser processes."""
     try:
         await exec_playwright(session_id, 'close', working_dir, env, timeout=10)
+    except Exception:
+        pass
+
+    # Kill any remaining chromium processes spawned for this session
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            f"pkill -f 'chromium.*{session_id}' 2>/dev/null; pkill -f 'playwright-cli.*-s={session_id}' 2>/dev/null",
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        await asyncio.wait_for(proc.wait(), timeout=5)
     except Exception:
         pass
 
@@ -903,7 +917,10 @@ def main():
             print(f"Success Rate: {min(success_rates)*100:.0f}% - {max(success_rates)*100:.0f}%")
 
     finally:
+        # Ensure all playwright sessions and orphaned browser processes are cleaned up
         os.system('playwright-cli close-all 2>/dev/null')
+        os.system("pkill -f 'chromium.*playwright' 2>/dev/null")
+        os.system("pkill -f 'playwright-cli' 2>/dev/null")
 
 
 if __name__ == '__main__':

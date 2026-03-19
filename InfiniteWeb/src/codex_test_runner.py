@@ -112,6 +112,9 @@ def get_system_time_override(task: TestTask) -> Optional[str]:
   const __startReal = __OrigDate.now();
   function FakeDate(...args) {{
     if (args.length === 0) return new __OrigDate(__baseline + (__OrigDate.now() - __startReal));
+    if (args.length === 1 && typeof args[0] === 'string' && /^\\d{{4}}-\\d{{2}}-\\d{{2}}$/.test(args[0])) {{
+      return new __OrigDate(args[0] + 'T00:00:00');
+    }}
     return new __OrigDate(...args);
   }}
   FakeDate.prototype = __OrigDate.prototype;

@@ -550,8 +550,8 @@ REQUIREMENTS:
 SCORING PATTERN:
 ```javascript
 const checkpoints = [];
-checkpoints.push({ passed: condition1, weight: 0.2 });
-checkpoints.push({ passed: condition2, weight: 0.3 });
+checkpoints.push({{ passed: condition1, weight: 0.2 }});
+checkpoints.push({{ passed: condition2, weight: 0.3 }});
 // ... more checkpoints
 return checkpoints.reduce((sum, cp) => sum + (cp.passed ? cp.weight : 0), 0);
 ```

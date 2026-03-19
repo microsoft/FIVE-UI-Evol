@@ -743,6 +743,13 @@ class TDDGenerator:
             if not validation['valid']:
                 warnings_str = "; ".join(validation['warnings']) if validation['warnings'] else "No specific warnings"
                 self.logger.log_warning(f"Interface validation warnings: {warnings_str}")
+
+            # Lint interface specs for deterministic quality checks
+            lint_result = self.interface_designer.lint_interfaces(interfaces)
+            if not lint_result['passed']:
+                errors_str = "; ".join(lint_result['errors'])
+                raise ValueError(f"Interface lint failed: {errors_str}")
+
             self.logger.end_stage("Design Interfaces")
             self.logger.log_step_end("Design Interfaces", "PREPARE")
 

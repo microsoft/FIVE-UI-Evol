@@ -224,7 +224,7 @@ DESIGN REQUIREMENTS:
 2. Write a clear description of the page functionality
 3. Design core features based on the assigned interfaces
 
-IMPORTANT: Do NOT add hero sections, welcome banners, marketing taglines, or promotional headlines unless they are explicitly required by the page's core functionality. The page title should be simple and functional (e.g., "Products", "Search Results", "User Profile"), not marketing copy.
+IMPORTANT: Page chrome (hero banner titles, site taglines, about-us paragraphs, decorative images that do NOT reference any data entity) should be treated as static inline HTML — do NOT assign SDK interfaces for them. Content that displays data model entities (product lists, category menus, team members, testimonials, schedules) MUST use SDK interfaces even if shown statically. The page title should be simple and functional (e.g., "Products", "Search Results", "User Profile"), not marketing copy.
 4. Define user workflows that utilize the interfaces
 5. Specify user interactions (clicks, forms, navigation)
 6. Describe state logic using URL parameters (NOT localStorage)

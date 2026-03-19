@@ -400,8 +400,8 @@ Requirements:
     - data-action="xxx" for interactive elements
     - data-component="xxx" for component identification
     - When filtering, grouping, or comparing data by enum fields (fields with "type": "enum"
-      in the data model), use the exact values from the enum's "values" list in lowercase_snake_case.
-      Enum fields are stored as plain strings in localStorage.
+      in data models or interface definitions), use the exact values from the enum's "values" list in lowercase_snake_case.
+      Do NOT invent synonyms or alternate spellings. Enum fields are stored as plain strings in localStorage.
 11. Use the data dictionary structure for any data references
 12. Website should provide default response when no expected parameters are provided
 13. In JavaScript, render any multi-line HTML/text using ES6 template literals (`...`) or DOM APIs (never multi-line ' or " strings or backslash continuations), escape interpolations, and ensure the script parses without syntax errors.
@@ -412,7 +412,10 @@ Requirements:
       * Skeuomorphic designs → bordered containers, table-like structures, dense spacing
       * Modern minimalist → shadow-based separation, flexbox/grid layouts, generous spacing
       * Early-web/traditional → simple structures, border separators, compact forms
-15. **CRITICAL**: Do NOT add hero sections, welcome banners, marketing headlines, promotional taglines, or large introductory text blocks unless the page design explicitly requires them. Focus on functional content that serves the page's purpose. The page should jump directly into its core functionality.
+15. **Page Chrome vs Business Data**:
+    - Page chrome = decorative content that does NOT display data model entities: hero banner titles, site taglines, about-us paragraphs, decorative background images. Generate these as **static inline HTML** directly. Do NOT call SDK interfaces for them.
+    - Business data = content that displays data model entity instances: product lists, category menus, team members, testimonials, schedules, search results, table data, form submissions. These MUST be fetched via SDK interfaces, even if displayed without user interaction.
+    - When including decorative images, use placeholder URLs like "https://picsum.photos/1200/500" — they will be replaced by the resource pipeline later.
 16. **Entity Reference Parameters - CRITICAL for User Experience**:
     For interface parameters that have "entityReference" metadata (e.g., {{"entity": "Location", "displayField": "displayName", "valueField": "id"}}):
     a. NEVER use plain text input expecting users to type internal IDs like "loc_1" or "cat_123"

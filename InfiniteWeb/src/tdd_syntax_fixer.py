@@ -682,19 +682,27 @@ class TDDSyntaxFixer:
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
 
-        # Preprocess: remove NULL characters
+        # Preprocess: remove illegal control characters
+        original_content = content
         content = self._preprocess_content(content)
+        preprocessed_changed = (content != original_content)
 
         # Detect errors
         errors = self._detect_errors(file_path, content)
         errors_before = len(errors)
 
         if not errors:
-            if self.logger:
+            # Save if preprocess cleaned control chars even though no other errors
+            if preprocessed_changed:
+                with open(output_path, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                if self.logger:
+                    self.logger.log_info(f"  Cleaned control characters in {filename}")
+            elif self.logger:
                 self.logger.log_info(f"  No errors found in {filename}")
             return {
                 "file": filename,
-                "status": "no_errors",
+                "status": "cleaned" if preprocessed_changed else "no_errors",
                 "errors_before": 0,
                 "errors_after": 0,
                 "iterations": 0
@@ -830,19 +838,32 @@ class TDDSyntaxFixer:
 
     def _preprocess_content(self, content: str) -> str:
         """
-        Preprocess file content to remove invalid characters.
+        Preprocess file content to remove illegal control characters and fix
+        common deterministic errors.
 
-        Removes NULL characters (\x00) that cause invalid-codepoint errors
-        in html5lib but cannot be fixed by LLM due to lack of position info.
+        1. Remove illegal control chars (0x00-0x08, 0x0b, 0x0c, 0x0e-0x1f)
+           that LLMs emit via broken Unicode escapes.
+        2. Fix bare & in href/src URLs (LLMs always generate & instead of &amp;
+           in Google Fonts and similar URLs, causing expected-named-entity errors).
 
         Args:
             content: Raw file content
 
         Returns:
-            Cleaned content with NULL characters removed
+            Cleaned content
         """
-        # Remove NULL characters that cause invalid-codepoint errors
-        return content.replace('\x00', '')
+        import re
+        content = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', content)
+        # Fix bare & in href/src attribute URLs (loop for multiple & in one URL)
+        prev = None
+        while prev != content:
+            prev = content
+            content = re.sub(
+                r'((?:href|src)=["\'][^"\']*?)&(?!amp;|lt;|gt;|quot;|#)([a-zA-Z])',
+                r'\1&amp;\2',
+                content
+            )
+        return content
 
     # ================== Detection Methods ==================
 
@@ -1027,9 +1048,72 @@ class TDDSyntaxFixer:
 
     # ================== Fix Methods ==================
 
+    @staticmethod
+    def _find_fuzzy(content: str, old: str) -> Optional[str]:
+        """Find `old` in `content` using a fallback chain of matching strategies.
+
+        Returns the actual substring from `content` that matches, or None.
+        Strategies (tried in order):
+          1. Exact match
+          2. Line-trimmed: each line .strip() compared
+          3. Whitespace-normalized: all whitespace collapsed to single space
+          4. Block-anchor: first/last line anchors + similarity threshold
+        """
+        # Strategy 1: Exact match
+        if old in content:
+            return old
+
+        old_lines = old.split('\n')
+        content_lines = content.split('\n')
+
+        # Strategy 2: Line-trimmed match
+        search_trimmed = [l.strip() for l in old_lines]
+        while search_trimmed and not search_trimmed[-1]:
+            search_trimmed.pop()
+        if len(search_trimmed) >= 1:
+            for i in range(len(content_lines) - len(search_trimmed) + 1):
+                candidate_lines = content_lines[i:i + len(search_trimmed)]
+                if [l.strip() for l in candidate_lines] == search_trimmed:
+                    match = '\n'.join(candidate_lines)
+                    if content.count(match) == 1:
+                        return match
+
+        # Strategy 3: Whitespace-normalized match
+        def normalize_ws(s):
+            return re.sub(r'\s+', ' ', s).strip()
+        old_norm = normalize_ws(old)
+        if len(old_norm) >= 10:
+            for i in range(len(content_lines)):
+                for length in range(1, min(len(content_lines) - i + 1, len(old_lines) + 5)):
+                    candidate = '\n'.join(content_lines[i:i + length])
+                    if normalize_ws(candidate) == old_norm:
+                        if content.count(candidate) == 1:
+                            return candidate
+
+        # Strategy 4: Block-anchor match (first/last line trim-match, middle lines similar)
+        if len(search_trimmed) >= 2:
+            first_anchor = search_trimmed[0]
+            last_anchor = search_trimmed[-1]
+            candidates = []
+            for i in range(len(content_lines)):
+                if content_lines[i].strip() != first_anchor:
+                    continue
+                # Search for last anchor within a reasonable range
+                max_end = min(len(content_lines), i + len(search_trimmed) + 3)
+                for j in range(i + 1, max_end):
+                    if content_lines[j].strip() != last_anchor:
+                        continue
+                    candidate = '\n'.join(content_lines[i:j + 1])
+                    if content.count(candidate) == 1:
+                        candidates.append(candidate)
+            if len(candidates) == 1:
+                return candidates[0]
+
+        return None
+
     def _apply_replacements(self, content: str, replacements: List[Dict]) -> Tuple[str, int, int]:
         """
-        Apply search-replace patches to content.
+        Apply search-replace patches to content using fuzzy matching fallback chain.
 
         Args:
             content: Original file content
@@ -1050,8 +1134,9 @@ class TDDSyntaxFixer:
                 failed += 1
                 continue
 
-            if old in modified:
-                modified = modified.replace(old, new, 1)  # Replace only first occurrence
+            match = self._find_fuzzy(modified, old)
+            if match is not None:
+                modified = modified.replace(match, new, 1)
                 success += 1
             else:
                 failed += 1

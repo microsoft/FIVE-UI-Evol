@@ -117,6 +117,22 @@ class TDDInterfaceDesigner:
            - When listing example values for string parameters in descriptions, use lowercase_snake_case
            - Example: "e.g., 'code_sample', 'request_example'" (NOT "code-sample", "Code Sample")
            - This applies to status, type, category, mode, context, and similar parameters
+        12. Do NOT Design Interfaces for Page Chrome Content:
+           - Page chrome = decorative text/images that do NOT reference any entity in Data Models and are NOT related to any user task
+           - Examples of page chrome (no interface needed): hero banner title like "Welcome to Our Store", site tagline, about-us paragraph, footer copyright text, decorative background images
+           - Examples that ARE business data (interface needed): featured products, category lists, team member profiles, testimonials, store locations, pricing tables, event schedules — even if displayed statically, these reference Data Model entities
+           - If content references or displays instances of a Data Model entity, it MUST go through an SDK interface
+           - If content is generic text/images that could be written by the page generator without any data, it should be inlined in HTML
+        13. CRITICAL - Configuration Interfaces Must Include Concrete Values:
+           - For interfaces returning display/config metadata (e.g., *TableConfig, *FilterOptions, *SortOptions),
+             include concrete selectable values so SDK and HTML cannot guess different keys.
+           - For fields with a fixed set of allowed string values, use "type": "enum" with a "values" list
+             (same format as data models). Do NOT use "type": "string" with a separate "enumValues" property.
+           - For table config interfaces: always list explicit column keys in availableColumns with exact key and label values
+           - For filter/sort option interfaces: always list explicit option values using "type": "enum", "values": [...]
+           - For scalar defaults, include "defaultValue" in the property schema
+           - Do NOT leave configurable keys as free-form strings without explicit allowed values
+           - Example: a table config should specify {{"key": "name", "label": "Name"}}, {{"key": "price", "label": "Price"}} — not just "returns column config"
 
         Example task interfaces:
         - getProductDetails(productId) - show product info
@@ -159,6 +175,36 @@ class TDDInterfaceDesigner:
                     ],
                     "returns": {{"type": "array", "items": "Flight"}},
                     "relatedTasks": ["task_1"]
+                }},
+                {{
+                    "name": "getProductTableConfig",
+                    "description": "Get table configuration for product listing",
+                    "parameters": [],
+                    "returns": {{
+                        "type": "object",
+                        "properties": {{
+                            "availableColumns": {{
+                                "type": "array",
+                                "items": {{
+                                    "type": "object",
+                                    "properties": {{
+                                        "key": {{"type": "enum", "values": ["name", "price", "category", "stock"]}},
+                                        "label": {{"type": "string"}}
+                                    }}
+                                }}
+                            }},
+                            "defaultColumns": {{
+                                "type": "array",
+                                "items": {{"type": "enum", "values": ["name", "price"]}},
+                                "defaultValue": ["name", "price"]
+                            }},
+                            "sortableColumns": {{
+                                "type": "array",
+                                "items": {{"type": "enum", "values": ["name", "price", "stock"]}}
+                            }}
+                        }}
+                    }},
+                    "relatedTasks": []
                 }}
             ],
             "helperFunctions": [
@@ -271,15 +317,19 @@ class TDDInterfaceDesigner:
             "boolean": "boolean",
             "datetime": "Date",
             "array": "any[]",
-            "object": "any"
+            "object": "any",
+            "enum": "string"
         }
         return type_map.get(type_str, "any")
     
-    def _format_return_type(self, returns: Dict[str, Any]) -> str:
+    def _format_return_type(self, returns) -> str:
         """Format return type for TypeScript"""
         if not returns:
             return "void"
-        
+
+        if isinstance(returns, str):
+            return self._ts_type(returns)
+
         if returns.get('type') == 'object' and 'properties' in returns:
             props = []
             for prop, details in returns['properties'].items():
@@ -295,7 +345,87 @@ class TDDInterfaceDesigner:
             return "{" + ", ".join(props) + "}"
         
         return self._ts_type(returns.get('type', 'any'))
-    
+
+    def lint_interfaces(self, interfaces: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Deterministic lint check on designed interfaces.
+        Fails on critical issues, warns on non-critical ones.
+
+        Args:
+            interfaces: Designed interfaces
+
+        Returns:
+            Dict with 'passed', 'errors', 'warnings' keys
+        """
+        errors = []
+        warnings = []
+
+        for iface in interfaces.get('interfaces', []):
+            name = iface.get('name', '<unnamed>')
+
+            # Check 1: object parameters must have properties; enum parameters must have values
+            for param in iface.get('parameters', []):
+                param_type = param.get('type', '')
+                if param_type == 'object' and 'properties' not in param:
+                    errors.append(
+                        f"[{name}] parameter '{param.get('name', '?')}' has type 'object' but missing 'properties'"
+                    )
+                if param_type == 'enum' and 'values' not in param:
+                    errors.append(
+                        f"[{name}] parameter '{param.get('name', '?')}' has type 'enum' but missing 'values'"
+                    )
+
+            # Check 2: TableConfig interfaces must have concrete column definitions
+            if 'TableConfig' in name or 'tableConfig' in name:
+                returns = iface.get('returns', {})
+                props = returns.get('properties', {})
+                available_cols = props.get('availableColumns', {})
+                if not available_cols:
+                    errors.append(
+                        f"[{name}] is a TableConfig interface but returns no 'availableColumns' property"
+                    )
+                else:
+                    # Check that items have enumValues or concrete key definitions
+                    items = available_cols.get('items', {})
+                    if isinstance(items, dict):
+                        item_props = items.get('properties', {})
+                        key_prop = item_props.get('key', {})
+                        if isinstance(key_prop, dict) and 'enumValues' not in key_prop and 'values' not in key_prop:
+                            warnings.append(
+                                f"[{name}] availableColumns.items.key has no 'values'/'enumValues' — column keys may diverge between SDK and HTML"
+                            )
+
+            # Check 3: array return types must have items
+            returns = iface.get('returns', {})
+            if isinstance(returns, dict) and returns.get('type') == 'array' and 'items' not in returns:
+                errors.append(
+                    f"[{name}] returns type 'array' but missing 'items' specification"
+                )
+
+            # Check 4: FilterOptions/SortOptions should have concrete values
+            if any(kw in name for kw in ['FilterOptions', 'filterOptions', 'SortOptions', 'sortOptions']):
+                returns = iface.get('returns', {})
+                if isinstance(returns, dict) and returns.get('type') == 'object' and 'properties' not in returns:
+                    warnings.append(
+                        f"[{name}] is a config interface but returns no 'properties' — filter/sort keys may diverge"
+                    )
+
+        passed = len(errors) == 0
+        result = {'passed': passed, 'errors': errors, 'warnings': warnings}
+
+        if self.logger:
+            if errors:
+                self.logger.log_error(f"Interface lint FAILED with {len(errors)} error(s):")
+                for e in errors:
+                    self.logger.log_error(f"  ERROR: {e}")
+            if warnings:
+                for w in warnings:
+                    self.logger.log_info(f"  WARN: {w}")
+            if passed:
+                self.logger.log_info(f"Interface lint passed ({len(warnings)} warning(s))")
+
+        return result
+
     def design_missing_interfaces(self, missing_interfaces: Dict[str, List[Dict[str, str]]], 
                                    tasks: List[Dict[str, Any]], 
                                    data_models: Dict[str, Any],

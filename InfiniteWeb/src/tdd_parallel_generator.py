@@ -210,7 +210,7 @@ class TDDParallelGenerator:
         1. Implement ALL core interfaces specified
         2. Add helper functions as needed (prefix with _ for private)
         3. Use localStorage for ALL data persistence (browser-compatible)
-        4. NO DOM operations (except localStorage), NO window/document references (except localStorage)
+        4. NO DOM APIs (document.querySelector, addEventListener, innerHTML, etc). window/globalThis references are allowed ONLY in the final export block. The export block MUST include: window.WebsiteSDK = new BusinessLogic(); and module.exports = BusinessLogic;
         5. Must work in both browser and Node.js environments (with localStorage polyfill)
         6. Keep business logic PURE - no test code in this class
         7. All data must be JSON serializable for localStorage
@@ -233,18 +233,20 @@ class TDDParallelGenerator:
            - This ensures frontend code can directly access item.product.title, item.product.price, etc. without additional lookups
            - Apply this pattern to ALL getter functions that return items with foreign key fields
         11. IMPORTANT - Enum Value Naming Convention:
-           Fields with "type": "enum" in the data model are stored as plain strings in localStorage.
+           Fields with "type": "enum" in data models or interface definitions are stored as plain strings in localStorage.
            When comparing or filtering by these fields in the implementation:
-           - Always use the exact values from the enum's "values" list
+           - Always use the exact values from the enum's "values" list — do NOT invent synonyms or alternate spellings
            - All enum values use lowercase_snake_case format (e.g., 'in_progress', 'pending_review')
            - Do NOT use camelCase, Title Case, UPPER_CASE, or hyphen-case for enum comparisons
+           - This applies to BOTH data model fields AND interface parameter/return properties that have "type": "enum"
         12. When filtering or matching, consider hierarchical relationships
            between entities in the data model.
+        13. Null safety: data fields may be null or undefined. Always guard before calling methods like .toFixed(), .toLowerCase(), .includes() or accessing nested properties. Use patterns like (value != null ? value.toFixed(1) : '0.0').
 
         **CRITICAL DATA REQUIREMENTS**
         - Do not mock data , use the data from localStorage.
 
-        STRUCTURE:
+        STRUCTURE (use this exact skeleton, implement ALL interface methods with real logic):
         ```javascript
         // localStorage polyfill for Node.js and environments without localStorage
         const localStorage = (function () {
@@ -253,105 +255,35 @@ class TDDParallelGenerator:
               return globalThis.localStorage;
             }
           } catch (e) {}
-          // Simple in-memory polyfill
           var store = {};
           return {
             getItem: function (key) {
               return Object.prototype.hasOwnProperty.call(store, key) ? store[key] : null;
             },
-            setItem: function (key, value) {
-              store[key] = String(value);
-            },
-            removeItem: function (key) {
-              delete store[key];
-            },
-            clear: function () {
-              store = {};
-            },
-            key: function (index) {
-              return Object.keys(store)[index] || null;
-            },
-            get length() {
-              return Object.keys(store).length;
-            }
+            setItem: function (key, value) { store[key] = String(value); },
+            removeItem: function (key) { delete store[key]; },
+            clear: function () { store = {}; },
+            key: function (index) { return Object.keys(store)[index] || null; },
+            get length() { return Object.keys(store).length; }
           };
         })();
 
         class BusinessLogic {
           constructor() {
-            // Initialize localStorage with default data structures
             this._initStorage();
             this.idCounter = this._getNextIdCounter();
           }
-          
-          _initStorage() {
-            // Initialize all data tables in localStorage if not exist
-            if (!localStorage.getItem('users')) {
-              localStorage.setItem('users', JSON.stringify([]));
-            }
-            if (!localStorage.getItem('products')) {
-              localStorage.setItem('products', JSON.stringify([]));
-            }
-            if (!localStorage.getItem('carts')) {
-              localStorage.setItem('carts', JSON.stringify([]));
-            }
-            if (!localStorage.getItem('cartItems')) {
-              localStorage.setItem('cartItems', JSON.stringify([]));
-            }
-            if (!localStorage.getItem('idCounter')) {
-              localStorage.setItem('idCounter', '1000');
-            }
-          }
-          
-          _getFromStorage(key) {
-            const data = localStorage.getItem(key);
-            return data ? JSON.parse(data) : [];
-          }
-          
-          _saveToStorage(key, data) {
-            localStorage.setItem(key, JSON.stringify(data));
-          }
-          
-          _getNextIdCounter() {
-            const current = parseInt(localStorage.getItem('idCounter') || '1000');
-            const next = current + 1;
-            localStorage.setItem('idCounter', next.toString());
-            return next;
-          }
-          
-          _generateId(prefix) {
-            return prefix + '_' + this._getNextIdCounter();
-          }
-          
-          // Core interface implementations
-          addToCart(userId, productId, quantity = 1) {
-            // Get data from localStorage
-            let carts = this._getFromStorage('carts');
-            let cartItems = this._getFromStorage('cartItems');
-            
-            // Pure business logic implementation
-            // Should handle cart creation if needed
-            // Save back to localStorage
-            this._saveToStorage('carts', carts);
-            this._saveToStorage('cartItems', cartItems);
-            
-            // Return success/failure with details
-            return { success: true, cartId: 'cart_id' };
-          }
-          
-          _findOrCreateCart(userId) {
-            let carts = this._getFromStorage('carts');
-            // Find existing cart or create new one
-            // Save if created
-            this._saveToStorage('carts', carts);
-            return cart;
-          }
-          
-          // NO test methods in this class
-          // Testing should be handled externally
+          _initStorage() { /* Initialize all data tables from data models in localStorage if not exist */ }
+          _getFromStorage(key) { const d = localStorage.getItem(key); return d ? JSON.parse(d) : []; }
+          _saveToStorage(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+          _getNextIdCounter() { const c = parseInt(localStorage.getItem('idCounter') || '1000'); localStorage.setItem('idCounter', (c+1).toString()); return c+1; }
+          _generateId(prefix) { return prefix + '_' + this._getNextIdCounter(); }
+
+          // Implement ALL interface methods here with complete, working logic.
+          // Every method must contain executable code - no TODO, no placeholders, no comment-only stubs.
         }
 
-        // Browser global + Node.js export
+        // Export block (REQUIRED - do not omit)
         if (typeof window !== 'undefined') {
           window.BusinessLogic = BusinessLogic;
           window.WebsiteSDK = new BusinessLogic();
@@ -490,119 +422,45 @@ class TDDParallelGenerator:
            NOT localStorage.getItem('Product')
         10. Call SDK interfaces with positional arguments only (do NOT pass a single object) to keep consistent with usage.
 
-        STRUCTURE:
+        STRUCTURE (use this exact skeleton, implement ALL test flows with real logic):
         ```javascript
-        // Test runner for business logic
+        // Node.js environment - import BusinessLogic from the same directory
+        const BusinessLogic = require('./business_logic.js');
+
         class TestRunner {
           constructor(businessLogic) {
             this.logic = businessLogic || new BusinessLogic();
             this.results = [];
-            // Clear localStorage before tests
             this.clearStorage();
-            // Initialize test data
             this.setupTestData();
           }
-          
-          clearStorage() {
-            // Clear all localStorage data for clean test environment
-            localStorage.clear();
-            // Reinitialize storage structure
-            this.logic._initStorage();
-          }
-          
+
+          clearStorage() { localStorage.clear(); this.logic._initStorage(); }
+
           setupTestData() {
-            // Setup initial test data directly in localStorage
-            // IMPORTANT: Use the Generated Data exactly as provided
-            // Copy all data from Generated Data to localStorage using the correct storage keys
-            // Example: localStorage.setItem('users', JSON.stringify(generatedData.users));
-            // This ensures consistency between test and production environments
+            // Populate localStorage with ALL Generated Data using correct storage keys.
+            // Every entity type must be written. No placeholders.
           }
-          
-          // Run all tests
+
           runAllTests() {
-            console.log('Starting flow tests...');
-            
-            this.testAddToCartFlow();
-            this.testCheckoutFlow();
-            // ... more test flows
-            
+            // Call every test method here. One test method per user task.
             return this.results;
           }
-          
-          // Test flow: User adds product to cart
-          testAddToCartFlow() {
-            console.log('Testing: Add to cart flow');
-            const testName = 'Add product to cart';
-            
-            try {
-              // Setup - Get initial test data from localStorage (populated by setupTestData)
-              let users = JSON.parse(localStorage.getItem('users') || '[]');
-              let products = JSON.parse(localStorage.getItem('products') || '[]');
-              
-              // Use IDs from initial data for testing
-              const testUserId = users[0].id;
-              const testProductId = products[0].id;
-              const testQuantity = 2;
-              
-              // Execute flow - CAPTURE ACTUAL API RESPONSE
-              const addResult = this.logic.addToCart(testUserId, testProductId, testQuantity);
-              
-              // CRITICAL: Extract values from actual response, don't hardcode
-              this.assert(addResult.success === true, 'Should successfully add to cart');
-              this.assert(addResult.cartId, 'Should return cart ID');
-              
-              // Use the ACTUAL cartId returned, not a hardcoded value
-              const actualCartId = addResult.cartId;
-              
-              // Verify cart contents using ACTUAL returned cart ID
-              const cartDisplay = this.logic.getCartDisplay(testUserId);
-              this.assert(cartDisplay, 'Should retrieve cart display');
-              
-              // Find the item we just added using actual data
-              const addedItem = cartDisplay.items.find(item => 
-                item.productId === testProductId
-              );
-              this.assert(addedItem, 'Should find the added product in cart');
-              this.assert(addedItem.quantity === testQuantity, 
-                'Should have correct quantity: ' + addedItem.quantity);
-              
-              // Test chaining - use actual cart data for checkout
-              if (cartDisplay.cartId) {
-                const checkoutResult = this.logic.proceedToCheckout(cartDisplay.cartId);
-                // Use actual response data, not hardcoded expectations
-                this.assert(checkoutResult.orderId, 'Should create order with ID: ' + checkoutResult.orderId);
-              }
-              
-              this.recordSuccess(testName);
-            } catch (error) {
-              this.recordFailure(testName, error);
-            }
-          }
-          
-          // Helper methods
-          assert(condition, message) {
-            if (!condition) {
-              throw new Error('Assertion failed: ' + message);
-            }
-          }
-          
-          recordSuccess(testName) {
-            this.results.push({test: testName, success: true});
-            console.log('✓ ' + testName);
-          }
-          
-          recordFailure(testName, error) {
-            this.results.push({test: testName, success: false, error: error.message});
-            console.log('✗ ' + testName + ': ' + error.message);
-          }
+
+          // Implement one test method per task. Each method must:
+          // 1. Read initial data from localStorage (populated by setupTestData)
+          // 2. Call SDK methods and CAPTURE actual return values
+          // 3. Assert using actual returned data - NEVER hardcode expected values
+          // 4. Chain calls: extract IDs/values from responses for subsequent calls
+
+          assert(condition, message) { if (!condition) throw new Error('Assertion failed: ' + message); }
+          recordSuccess(testName) { this.results.push({test: testName, success: true}); console.log('PASS ' + testName); }
+          recordFailure(testName, error) { this.results.push({test: testName, success: false, error: error.message}); console.log('FAIL ' + testName + ': ' + error.message); }
         }
-        
-        // Export for Node.js ONLY (no AMD/UMD)
-        // DO NOT use conditional checks like if(typeof module !== 'undefined')
-        // Simply use direct export:
+
         module.exports = TestRunner;
         ```
-        
+
         Generate COMPLETE test flows for ALL user tasks in JSON format: {"code": "javascript code here"}
         """
         

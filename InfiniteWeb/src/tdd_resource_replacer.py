@@ -971,7 +971,10 @@ HTML to analyze:
                         build_paths(value, parent_path + [key])
             elif isinstance(obj, list):
                 for i, item in enumerate(obj):
-                    build_paths(item, parent_path + [i])
+                    if isinstance(item, str) and item.startswith(('http://', 'https://')):
+                        path_map[item] = (obj, i)
+                    else:
+                        build_paths(item, parent_path + [i])
         
         build_paths(data)
         

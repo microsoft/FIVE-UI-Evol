@@ -1,4 +1,5 @@
 import os
+import re
 import base64
 import mimetypes
 import random
@@ -292,6 +293,16 @@ def _build_response_params(deployment, messages, max_tokens, reasoning_effort, r
 
     return response_params
 
+def _fix_broken_unicode_escapes(text):
+    """Fix LLM-generated broken Unicode escapes in raw JSON text.
+
+    LLMs occasionally emit \\u0000XX instead of \\u00XX for characters like
+    · (U+00B7), × (U+00D7), non-breaking space (U+00A0), etc.
+    This fixes them before json.loads interprets \\u0000 as a null char.
+    """
+    return re.sub(r'\\u0000([0-9a-fA-F]{2})', r'\\u00\1', text)
+
+
 def _process_response(response):
     """Process API response and extract content and usage info.
 
@@ -301,7 +312,7 @@ def _process_response(response):
     Returns:
         Tuple of (reply_text, usage_info_dict)
     """
-    reply = response.output_text
+    reply = _fix_broken_unicode_escapes(response.output_text)
     usage_info = {
         'total_tokens': response.usage.total_tokens,
         'prompt_tokens': response.usage.input_tokens,
@@ -359,12 +370,12 @@ def _execute_with_retry(client, response_params, deployment, max_retries, stage)
             _track_token_usage(deployment, usage_info, stage)
 
             # Check if response is valid
-            if not reply or reply.strip() == "":
-                print(f"Warning: Empty response received on attempt {attempt + 1}")
+            if not reply or len(reply.strip()) < 5:
+                print(f"Warning: Response too short ({len(reply.strip()) if reply else 0} chars) on attempt {attempt + 1}, retrying...")
                 if attempt < max_retries - 1:
                     continue
                 else:
-                    print("All attempts resulted in empty responses")
+                    print("All attempts resulted in too-short responses")
                     return None, None
 
             return reply, usage_info
@@ -408,14 +419,14 @@ async def _execute_with_retry_async(client, response_params, deployment, max_ret
                 _track_token_usage(deployment, usage_info, stage)
 
             # Check if response is valid
-            if not reply or reply.strip() == "":
+            if not reply or len(reply.strip()) < 5:
                 if endpoint_label is None:
-                    print(f"Warning: Empty response received on attempt {attempt + 1}")
+                    print(f"Warning: Response too short ({len(reply.strip()) if reply else 0} chars) on attempt {attempt + 1}, retrying...")
                 if attempt < max_retries - 1:
                     continue
                 else:
                     if endpoint_label is None:
-                        print("All attempts resulted in empty responses")
+                        print("All attempts resulted in too-short responses")
                     return None, None
 
             return reply, usage_info

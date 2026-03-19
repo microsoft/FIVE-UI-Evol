@@ -232,6 +232,26 @@ The backfill_script must be a valid Python function named `backfill_derived_fiel
         field_classifications = result.get("field_classifications", [])
         backfill_script = result.get("backfill_script", "def backfill_derived_fields(data):\n    return data")
 
+        # Validate derived fields: downgrade to entity_data if source_entity
+        # doesn't exist or has no data to aggregate from
+        entity_names = {e["name"] for e in entities}
+        entity_gen_map = {e["name"]: e.get("data_pre_generation_num", "none") for e in entities}
+        downgraded = []
+        for fc in field_classifications:
+            if fc.get("type") != "derived":
+                continue
+            source = fc.get("source_entity", "")
+            if source not in entity_names:
+                fc["type"] = "entity_data"
+                downgraded.append(f"{fc['entity']}.{fc['field']} (source '{source}' not in schema)")
+            elif entity_gen_map.get(source) == "none":
+                fc["type"] = "entity_data"
+                downgraded.append(f"{fc['entity']}.{fc['field']} (source '{source}' has no pre-generated data)")
+        if downgraded:
+            self.logger.log_info(f"  Downgraded {len(downgraded)} derived fields to entity_data:")
+            for d in downgraded:
+                self.logger.log_info(f"    - {d}")
+
         return field_classifications, backfill_script
 
     # ─────────────────────────────────────────────
@@ -352,7 +372,7 @@ The backfill_script must be a valid Python function named `backfill_derived_fiel
 
         # Build system message
         system_content = self._build_system_prompt(website_type, current_date, tasks, navigation_links)
-        messages = [{"role": "user", "content": system_content}]
+        messages = [{"role": "system", "content": system_content}]
 
         # We'll collect data from each layer
         all_layer_data = []
@@ -468,8 +488,8 @@ CRITICAL CONSTRAINTS:
    - "few": Generate a small representative set, around 20-30% of {self.max_items}
 5. No extra fields beyond what is specified
 6. Foreign key fields MUST reference IDs from previously generated data
-7. **Enum fields**: When a field has "type": "enum" with "values", use ONLY those exact values. Do NOT invent alternatives, use different casing, or rephrase them. Store enum values as plain strings in the output.
-8. **Enum format**: All enum-like string values (status, type, category, mode, etc.) MUST use lowercase_snake_case format.
+7. **Enum fields**: When a field has "type": "enum" with "values", use ONLY those exact values in lowercase_snake_case format. Do NOT invent alternatives, use different casing, or rephrase them. Store enum values as plain strings in the output.
+8. **Aggregate/metric fields** (ratings, counts, scores, views, popularity, etc.) must have varied, non-zero values that satisfy the feasibility of the above tasks. Do NOT generate all-zero or all-null metrics — the data represents an actively used website, not an empty initial state. Example: if a task says "find products rated 4.0 or higher", ensure some products have rating_average >= 4.0 (e.g. 3.2, 4.1, 4.5, 4.8) and rating_count > 0 (e.g. 12, 45, 89).
 
 **IMAGE URL REQUIREMENTS:**
 Use ONLY real, working image services:

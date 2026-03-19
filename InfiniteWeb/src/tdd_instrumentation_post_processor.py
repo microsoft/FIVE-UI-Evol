@@ -5,15 +5,19 @@ Independent module for adding instrumentation to generated websites and creating
 
 import os
 import json
+import re
 import argparse
 import asyncio
-from typing import Dict, Any
+import subprocess
+import tempfile
+from typing import Dict, Any, List
 from tdd_logger_module import TDDLogger
 from tdd_instrumentation_analyzer import TDDInstrumentationAnalyzer
 from tdd_instrumentation_generator import TDDInstrumentationGenerator
 from tdd_instrumentation_validator import TDDInstrumentationValidator
-from tdd_instrumentation_evaluator import TDDInstrumentationEvaluator
+from tdd_instrumentation_evaluator import TDDInstrumentationEvaluator, TDDEvaluator
 from tdd_task_rewriter import TDDTaskRewriter
+from llm_caller import call_openai_api_json_async
 
 
 class TDDInstrumentationPostProcessor:
@@ -109,6 +113,156 @@ class TDDInstrumentationPostProcessor:
             "reasoning_effort": self.config.get("reasoning_effort", "medium")
         }
 
+    def _smoke_test_evaluator(self, evaluation_logic: str) -> Dict[str, Any]:
+        """Run evaluator code in Node.js with empty localStorage, check it returns a number."""
+        test_js = """
+const storage = {};
+const localStorage = {
+    getItem: (k) => storage[k] || null,
+    setItem: (k, v) => { storage[k] = v; },
+    clear: () => { for (const k in storage) delete storage[k]; },
+    removeItem: (k) => { delete storage[k]; },
+    get length() { return Object.keys(storage).length; },
+    key: (i) => Object.keys(storage)[i] || null
+};
+
+try {
+    const result = (function() { EVAL_CODE })();
+    if (typeof result !== 'number') {
+        console.log(JSON.stringify({ok: false, error: 'returned ' + typeof result + ': ' + JSON.stringify(result)}));
+    } else {
+        console.log(JSON.stringify({ok: true, value: result}));
+    }
+} catch (err) {
+    console.log(JSON.stringify({ok: false, error: err.message}));
+}
+""".replace("EVAL_CODE", evaluation_logic)
+
+        try:
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.js', delete=False) as tf:
+                tf.write(test_js)
+                tf_path = tf.name
+            result = subprocess.run(['node', tf_path], capture_output=True, text=True, timeout=5)
+            os.unlink(tf_path)
+            stdout = result.stdout.strip()
+            if stdout:
+                return json.loads(stdout)
+            return {"ok": False, "error": result.stderr.strip()[:200]}
+        except Exception as e:
+            return {"ok": False, "error": str(e)}
+
+    def _auto_fix_evaluator_logic(self, code: str) -> str:
+        """Attempt deterministic fixes for common evaluator bugs."""
+        # Fix 1: Variable name typos in reduce/push calls
+        code = re.sub(r'\bcheckoints\b', 'checkpoints', code)
+        code = re.sub(r'\bchecklists\b', 'checkpoints', code)
+        code = re.sub(r'\bcheckponts\b', 'checkpoints', code)
+        code = re.sub(r'\bcheckposts\b', 'checkpoints', code)
+        code = re.sub(r'\bcheckpoin\b', 'checkpoints', code)
+        code = re.sub(r'\bcheckPoints\b', 'checkpoints', code)
+
+        # Fix 2: Placeholder arrow function → proper reduce
+        # Pattern: return <anything> => 0; // placeholder
+        code = re.sub(
+            r'return\s+\w+\s*=>\s*0\s*;?\s*(//.*)?$',
+            'return checkpoints.reduce((sum, cp) => sum + (cp.passed ? cp.weight : 0), 0);',
+            code,
+            flags=re.MULTILINE
+        )
+
+        # Fix 3: return true/false → reduce
+        if code.rstrip().endswith('return true;') or code.rstrip().endswith('return false;'):
+            code = re.sub(
+                r'return\s+(true|false)\s*;\s*$',
+                'return checkpoints.reduce((sum, cp) => sum + (cp.passed ? cp.weight : 0), 0);',
+                code,
+                flags=re.MULTILINE
+            )
+
+        return code
+
+    async def _llm_fix_evaluator(self, ev, error_message: str) -> str:
+        """Use LLM to fix evaluator code based on the smoke test error."""
+        prompt = f"""Fix the JavaScript evaluator code below. It must return a NUMBER between 0.0 and 1.0.
+
+ERROR from running the code:
+{error_message}
+
+CURRENT CODE:
+```javascript
+{ev.evaluation_logic}
+```
+
+RULES:
+1. Use the checkpoint-based scoring pattern
+2. The code MUST end with: return checkpoints.reduce((sum, cp) => sum + (cp.passed ? cp.weight : 0), 0);
+3. Checkpoint weights must sum to 1.0
+4. Do NOT return a boolean, arrow function, or anything other than a number
+5. Fix only the bug — keep all business logic unchanged
+
+Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
+
+        try:
+            evaluator_config = self._get_component_config("instrumentation_evaluator")
+            result, _ = await call_openai_api_json_async(
+                [{"role": "user", "content": prompt}],
+                reasoning_effort="low",
+                model=evaluator_config["model"]
+            )
+            if isinstance(result, str):
+                result = json.loads(result)
+            return result.get("evaluation_logic", ev.evaluation_logic)
+        except Exception as e:
+            self.logger.log_error(f"  LLM fix failed: {e}")
+            return ev.evaluation_logic
+
+    async def _validate_evaluators(self, evaluators, business_logic_code, tasks, test_data):
+        """Smoke-test evaluators in Node.js, auto-fix with regex then LLM if needed."""
+        regex_fixed = 0
+        llm_fixed = 0
+        unfixable = []
+
+        for ev in evaluators:
+            result = self._smoke_test_evaluator(ev.evaluation_logic)
+            if result.get("ok"):
+                continue
+
+            error_msg = result.get('error', 'unknown')
+            self.logger.log_warning(
+                f"Evaluator {ev.task_id} smoke test failed: {error_msg}. Attempting fix..."
+            )
+
+            # Step 1: Try deterministic regex fix
+            fixed_code = self._auto_fix_evaluator_logic(ev.evaluation_logic)
+            if fixed_code != ev.evaluation_logic:
+                retest = self._smoke_test_evaluator(fixed_code)
+                if retest.get("ok"):
+                    ev.evaluation_logic = fixed_code
+                    regex_fixed += 1
+                    self.logger.log_info(f"  Auto-fixed {ev.task_id} (regex)")
+                    continue
+
+            # Step 2: Try LLM incremental fix
+            llm_code = await self._llm_fix_evaluator(ev, error_msg)
+            if llm_code != ev.evaluation_logic:
+                retest = self._smoke_test_evaluator(llm_code)
+                if retest.get("ok"):
+                    ev.evaluation_logic = llm_code
+                    llm_fixed += 1
+                    self.logger.log_info(f"  Auto-fixed {ev.task_id} (LLM)")
+                    continue
+
+            unfixable.append(ev.task_id)
+            self.logger.log_error(f"  Could not fix {ev.task_id}")
+
+        total_fixed = regex_fixed + llm_fixed
+        if total_fixed > 0:
+            self.logger.log_info(f"Fixed {total_fixed} evaluator(s): {regex_fixed} regex, {llm_fixed} LLM")
+        if unfixable:
+            self.logger.log_warning(f"{len(unfixable)} evaluator(s) unfixable: {unfixable}")
+
+        return evaluators
+
     async def process(self) -> Dict[str, Any]:
         """
         主处理流程
@@ -175,6 +329,10 @@ class TDDInstrumentationPostProcessor:
                     business_logic_code=input_data["business_logic_code"],
                     test_data=input_data["test_data"],  # 测试数据（前3条）
                     website_data=full_website_data  # 添加完整的website数据
+                )
+                evaluators = await self._validate_evaluators(
+                    evaluators, input_data["business_logic_code"],
+                    input_data["tasks"], input_data["test_data"]
                 )
                 self._save_evaluators(evaluators, input_data["static_data_types"])
 
@@ -261,6 +419,12 @@ class TDDInstrumentationPostProcessor:
                 business_logic_code=input_data["business_logic_code"],
                 test_data=input_data["test_data"],  # 测试数据（前3条）
                 website_data=full_website_data  # 添加完整的website数据
+            )
+
+            # Step 5: 验证evaluators
+            evaluators = await self._validate_evaluators(
+                evaluators, validated_code,
+                input_data["tasks"], input_data["test_data"]
             )
 
             # 保存evaluators
