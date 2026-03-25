@@ -59,7 +59,8 @@ class TDDInstrumentationEvaluator:
                                   static_data_types: List[str],
                                   business_logic_code: str = None,
                                   test_data: Dict[str, Any] = None,
-                                  website_data: Dict[str, Any] = None) -> List[TDDEvaluator]:
+                                  website_data: Dict[str, Any] = None,
+                                  rewritten_tasks: List[Dict[str, Any]] = None) -> List[TDDEvaluator]:
         """
         Generate evaluators based on instrumentation plan
 
@@ -71,6 +72,7 @@ class TDDInstrumentationEvaluator:
             business_logic_code: The business logic implementation code
             test_data: Test data (first 3 items of each entity)
             website_data: Complete website data for reference
+            rewritten_tasks: Rewritten tasks with instruction and ground_truth (for consistency checking)
 
         Returns:
             List of TDDEvaluator instances
@@ -90,7 +92,8 @@ class TDDInstrumentationEvaluator:
                 datadict=datadict,
                 business_logic_code=business_logic_code,
                 test_data=test_data,
-                website_data=website_data
+                website_data=website_data,
+                rewritten_tasks=rewritten_tasks
             )
 
             # Parse into TDDEvaluator objects
@@ -144,7 +147,8 @@ class TDDInstrumentationEvaluator:
                                        datadict: Dict[str, Any] = None,
                                        business_logic_code: str = None,
                                        test_data: Dict[str, Any] = None,
-                                       website_data: Dict[str, Any] = None) -> Dict[str, Any]:
+                                       website_data: Dict[str, Any] = None,
+                                       rewritten_tasks: List[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Call LLM to generate evaluators
 
@@ -154,6 +158,7 @@ class TDDInstrumentationEvaluator:
             static_data_types: Static data types
             datadict: Data dictionary
             business_logic_code: The business logic implementation code
+            rewritten_tasks: Rewritten tasks with instructions for consistency checking
 
         Returns:
             Evaluators data

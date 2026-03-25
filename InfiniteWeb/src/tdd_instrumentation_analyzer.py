@@ -160,6 +160,15 @@ CONTEXT:
 TASKS TO EVALUATE:
 {json.dumps(tasks, indent=2)}
 
+TASK SCHEMA NOTES:
+- Some tasks may be rewritten tasks with this structure:
+  - `instruction`: the natural-language instruction shown to the agent
+  - `ground_truth`: exact targets / criteria for evaluation
+- If `ground_truth` is present, use it as the authoritative source for task correctness when deciding
+  what instrumentation is needed. This is especially important for exact quantities, target entities,
+  comparison criteria, and form values.
+- Do NOT rely only on `name` / `description` if `ground_truth` is available.
+
 CURRENT BUSINESS LOGIC (complete):
 {code_snippet}
 

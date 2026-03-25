@@ -372,10 +372,46 @@ IMPORTANT: The instruction should be something a real user would type, NOT an an
             Tuple of (is_valid, list_of_issues)
         """
         issues = []
+        entity_index = self._build_entity_index(website_data)
 
         for task in rewritten_tasks:
             task_id = task.get("id", "unknown")
+            ground_truth = task.get("ground_truth", {})
             data_mapping = task.get("data_mapping", {})
+
+            if not isinstance(ground_truth, dict):
+                issues.append(f"Task {task_id}: ground_truth must be an object")
+                ground_truth = {}
+            if not isinstance(data_mapping, dict):
+                issues.append(f"Task {task_id}: data_mapping must be an object")
+                data_mapping = {}
+
+            instruction = task.get("instruction", "")
+            if not isinstance(instruction, str) or not instruction.strip():
+                issues.append(f"Task {task_id}: Missing or empty instruction in rewritten task")
+
+            if not ground_truth and not data_mapping:
+                issues.append(f"Task {task_id}: Missing ground_truth/data_mapping in rewritten task")
+
+            # Validate new ground_truth schema
+            target_ids = ground_truth.get("target_ids", [])
+            target_names = ground_truth.get("target_names", [])
+
+            for target_id in target_ids:
+                if target_id not in entity_index:
+                    issues.append(f"Task {task_id}: Target ID '{target_id}' not found in website data")
+
+            if target_ids and target_names and len(target_ids) == len(target_names):
+                for target_id, expected_name in zip(target_ids, target_names):
+                    entity = entity_index.get(target_id)
+                    if not entity:
+                        continue
+                    actual_name = self._extract_entity_display_name(entity)
+                    if actual_name and str(actual_name) != str(expected_name):
+                        issues.append(
+                            f"Task {task_id}: Target name mismatch for {target_id} "
+                            f"(expected: {expected_name}, actual: {actual_name})"
+                        )
 
             # Check if referenced products exist
             if "target_product_id" in data_mapping:
@@ -407,3 +443,22 @@ IMPORTANT: The instruction should be something a real user would type, NOT an an
 
         is_valid = len(issues) == 0
         return is_valid, issues
+
+    def _build_entity_index(self, website_data: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+        """Build a lookup from entity id to entity object across all list-based entities."""
+        entity_index = {}
+        for items in website_data.values():
+            if not isinstance(items, list):
+                continue
+            for item in items:
+                if isinstance(item, dict) and item.get("id"):
+                    entity_index[str(item["id"])] = item
+        return entity_index
+
+    def _extract_entity_display_name(self, entity: Dict[str, Any]) -> Optional[str]:
+        """Extract a best-effort human-readable name from an entity."""
+        for field in ["name", "title", "displayName", "headline", "subject"]:
+            value = entity.get(field)
+            if value:
+                return str(value)
+        return None

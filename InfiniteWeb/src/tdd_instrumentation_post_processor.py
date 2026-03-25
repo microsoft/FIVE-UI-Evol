@@ -280,7 +280,46 @@ Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
             self.logger.log_info("\n📂 Step 0: Loading input files...")
             input_data = self._load_input_files()
 
-            # Step 1: 分析桩变量需求
+            # 复用已加载的完整 website_data，避免重复读取文件
+            full_website_data = input_data["website_data"]
+
+            original_tasks = input_data["tasks"]
+
+            # Step 0.5: 先基于真实数据重写任务，再做 instrumentation analysis
+            self.logger.log_info("\n🔄 Step 0.5: Rewriting tasks to match actual generated data...")
+            rewritten_tasks = await self.task_rewriter.rewrite_tasks(
+                original_tasks=original_tasks,
+                website_data=full_website_data,
+                datadict=input_data["datadict"],
+                include_full_data=self.config.get("task_rewriting", {}).get("include_full_data", True)
+            )
+
+            # 验证重写的任务
+            is_valid, issues = self.task_rewriter.validate_rewritten_tasks(
+                rewritten_tasks,
+                full_website_data
+            )
+
+            # 保存原始任务；重写后的任务只在校验通过后持久化为正式快照
+            self._save_original_tasks(original_tasks)
+
+            if not is_valid:
+                self.logger.log_error(f"❌ Task rewriting validation failed: {issues}")
+                self._remove_file_if_exists(os.path.join(self.website_dir, "rewritten_tasks.json"))
+                self._remove_file_if_exists(os.path.join(self.website_dir, "evaluators.json"))
+                return {
+                    "success": False,
+                    "error": f"Task rewriting validation failed: {issues}",
+                    "evaluators_count": 0
+                }
+
+            # 后续所有阶段统一消费 task_rewriter 的输出，避免 instrumentation 跟踪旧任务语义
+            input_data["tasks"] = rewritten_tasks
+            self.logger.log_info(
+                f"✅ Prepared {len(rewritten_tasks)} tasks for downstream analysis after task rewriting"
+            )
+
+            # Step 1: 分析桩变量需求（基于 rewritten tasks）
             self.logger.log_info("\n🔍 Step 1: Analyzing instrumentation requirements...")
             instrumentation_plan = await self.analyzer.analyze_requirements(
                 tasks=input_data["tasks"],
@@ -296,30 +335,6 @@ Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
             if not instrumentation_plan.has_instrumentation_needs():
                 self.logger.log_info("ℹ️ No instrumentation needed - existing variables sufficient")
 
-                # 即使不需要instrumentation，也要重写任务以匹配数据
-                self.logger.log_info("\n🔄 Rewriting tasks to match actual generated data...")
-
-                # 加载完整的website_data用于任务重写
-                website_data_path = os.path.join(self.website_dir, "website_data.json")
-                with open(website_data_path, 'r', encoding='utf-8') as f:
-                    full_website_data = json.load(f)
-
-                # 重写任务
-                rewritten_tasks = await self.task_rewriter.rewrite_tasks(
-                    original_tasks=input_data["tasks"],
-                    website_data=full_website_data,
-                    datadict=input_data["datadict"],
-                    include_full_data=self.config.get("task_rewriting", {}).get("include_full_data", True)
-                )
-
-                # 保存原始和重写后的任务
-                self._save_original_tasks(input_data["tasks"])
-                self._save_rewritten_tasks(rewritten_tasks)
-
-                # 更新input_data使用重写后的任务
-                input_data["tasks"] = rewritten_tasks
-                self.logger.log_info(f"✅ Successfully rewrote {len(rewritten_tasks)} tasks")
-
                 # 仍然生成evaluators，但基于现有变量和重写后的任务
                 evaluators = await self.evaluator_generator.generate_evaluators(
                     tasks=input_data["tasks"],  # 重写后的任务
@@ -328,12 +343,14 @@ Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
                     static_data_types=input_data["static_data_types"],
                     business_logic_code=input_data["business_logic_code"],
                     test_data=input_data["test_data"],  # 测试数据（前3条）
-                    website_data=full_website_data  # 添加完整的website数据
+                    website_data=full_website_data,  # 添加完整的website数据
+                    rewritten_tasks=rewritten_tasks  # 传入重写后的任务用于一致性检查
                 )
                 evaluators = await self._validate_evaluators(
                     evaluators, input_data["business_logic_code"],
                     input_data["tasks"], input_data["test_data"]
                 )
+                self._save_rewritten_tasks(input_data["tasks"])
                 self._save_evaluators(evaluators, input_data["static_data_types"])
 
                 return {
@@ -367,6 +384,8 @@ Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
                 # 验证失败：恢复原状，不保存插桩代码
                 self.logger.log_error(f"❌ Instrumentation validation failed: {validation_result.message}")
                 self._restore_original_code()
+                self._remove_file_if_exists(os.path.join(self.website_dir, "rewritten_tasks.json"))
+                self._remove_file_if_exists(os.path.join(self.website_dir, "evaluators.json"))
 
                 return {
                     "success": False,
@@ -375,39 +394,6 @@ Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
                     "error": f"Validation failed: {validation_result.message}",
                     "evaluators_count": 0
                 }
-
-            # Step 3.5: 重写任务以匹配实际数据
-            self.logger.log_info("\n🔄 Step 3.5: Rewriting tasks to match actual generated data...")
-
-            # 加载完整的website_data用于任务重写
-            website_data_path = os.path.join(self.website_dir, "website_data.json")
-            with open(website_data_path, 'r', encoding='utf-8') as f:
-                full_website_data = json.load(f)
-
-            # 重写任务
-            rewritten_tasks = await self.task_rewriter.rewrite_tasks(
-                original_tasks=input_data["tasks"],
-                website_data=full_website_data,
-                datadict=input_data["datadict"],
-                include_full_data=self.config.get("task_rewriting", {}).get("include_full_data", True)
-            )
-
-            # 验证重写的任务
-            is_valid, issues = self.task_rewriter.validate_rewritten_tasks(
-                rewritten_tasks,
-                full_website_data
-            )
-
-            if not is_valid:
-                self.logger.log_warning(f"Task rewriting validation issues: {issues}")
-
-            # 保存原始和重写后的任务
-            self._save_original_tasks(input_data["tasks"])
-            self._save_rewritten_tasks(rewritten_tasks)
-
-            # 更新input_data使用重写后的任务
-            input_data["tasks"] = rewritten_tasks
-            self.logger.log_info(f"✅ Successfully rewrote {len(rewritten_tasks)} tasks to match actual data")
 
             # Step 4: 生成evaluators（使用重写后的任务）
             self.logger.log_info("\n📝 Step 4: Generating evaluators with rewritten tasks...")
@@ -418,7 +404,8 @@ Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
                 static_data_types=input_data["static_data_types"],
                 business_logic_code=input_data["business_logic_code"],
                 test_data=input_data["test_data"],  # 测试数据（前3条）
-                website_data=full_website_data  # 添加完整的website数据
+                website_data=full_website_data,  # 添加完整的website数据
+                rewritten_tasks=rewritten_tasks  # 传入重写后的任务用于一致性检查
             )
 
             # Step 5: 验证evaluators
@@ -428,6 +415,7 @@ Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
             )
 
             # 保存evaluators
+            self._save_rewritten_tasks(input_data["tasks"])
             self._save_evaluators(evaluators, input_data["static_data_types"])
 
             self.logger.log_info("\n" + "=" * 80)
@@ -444,6 +432,8 @@ Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
             }
 
         except Exception as e:
+            self._remove_file_if_exists(os.path.join(self.website_dir, "rewritten_tasks.json"))
+            self._remove_file_if_exists(os.path.join(self.website_dir, "evaluators.json"))
             self.logger.log_exception(e, "Instrumentation Post-Processing")
             return {
                 "success": False,
@@ -514,7 +504,8 @@ Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
             "business_logic_code": business_logic_code,
             "original_tests": original_tests,
             "test_data": test_data,
-            "static_data_types": static_data_types
+            "static_data_types": static_data_types,
+            "website_data": full_data
         }
 
     def _extract_limited_test_data(self, full_data: Dict, limit: int) -> Dict:
@@ -774,6 +765,15 @@ Return JSON: {{"evaluation_logic": "// fixed JavaScript code"}}"""
 
         except Exception as e:
             self.logger.log_error(f"Failed to save rewritten tasks: {str(e)}")
+
+    def _remove_file_if_exists(self, path: str):
+        """删除指定文件（如果存在）"""
+        try:
+            if os.path.exists(path):
+                os.remove(path)
+                self.logger.log_info(f"🗑️  Removed stale file: {path}")
+        except Exception as e:
+            self.logger.log_warning(f"Failed to remove stale file {path}: {str(e)}")
 
     @staticmethod
     def _save_batch_results(batch_dir: str, results: list):
