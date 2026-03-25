@@ -5,7 +5,7 @@ Rewrites tasks based on actual generated data to ensure perfect alignment
 
 import json
 import re
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Tuple
 from tdd_logger_module import TDDLogger
 from llm_caller import call_openai_api_json_async
 
@@ -55,7 +55,8 @@ class TDDTaskRewriter:
             "data_analysis": data_analysis,
             "available_entities": list(website_data.keys()),
             "sample_data": self._get_sample_data(website_data, include_full_data=include_full_data),
-            "include_full_data": include_full_data
+            "include_full_data": include_full_data,
+            "datadict": datadict
         }
 
         # Call LLM to rewrite tasks
@@ -212,11 +213,24 @@ class TDDTaskRewriter:
         # Determine data label based on whether we have full data or samples
         data_label = "COMPLETE DATA (all items):" if context.get("include_full_data", False) else "SAMPLE DATA (first 3 items of each entity):"
 
+        # Build datadict section if available
+        datadict_section = ""
+        if context.get("datadict"):
+            datadict_section = f"""
+DATA MODEL DEFINITIONS:
+{json.dumps(context["datadict"], indent=2)}
+
+Use this to understand:
+- Which entities have data_pre_generation_num="none" (runtime-created, likely involve form input)
+- Field types and valid enum values
+- Relationships between entities
+"""
+
         prompt = f"""You are rewriting tasks to create clean instructions for RL agent training.
 
 The goal is to separate:
-- **instruction**: What the user wants to do (generic, no answers revealed)
-- **ground_truth**: Specific data for evaluation (IDs, names, exact values)
+- **instruction**: What the user sees — criteria for discovery, plus any values the user must type
+- **ground_truth**: Specific data for evaluation, split into discovery_targets and given_inputs
 
 ORIGINAL TASKS:
 {json.dumps(original_tasks, indent=2)}
@@ -226,27 +240,70 @@ DATA ANALYSIS:
 
 {data_label}
 {json.dumps(context["sample_data"], indent=2)}
+{datadict_section}
+## VALUE CLASSIFICATION (CRITICAL — Read This First)
 
-## CRITICAL RULES FOR INSTRUCTION FIELD
+Every concrete value in the original task steps belongs to one of TWO types.
+You MUST classify each value correctly before writing the instruction.
 
-The instruction field is what an RL agent will see. It must:
+### Type D — Discovery Values (the "answer" the agent must find)
 
-1. **NEVER include internal IDs** - Users cannot see IDs like prod_001, art_002, mr_003, b1, p5
-2. **NEVER include specific item names that reveal the answer** - Users should discover these
-3. **ONLY include filtering criteria**: category, price range, rating threshold, quantity, date ranges
-4. **Be concise** - Single sentence preferred, no redundant explanations
-5. **CRITICAL: ADJUST QUANTITY based on actual data availability** - Count items in the provided data that match the task criteria. If the original task asks for N items but only M items exist, YOU MUST change the instruction quantity from N to M. Example: if task says "find 5 AI podcasts" but data only has 1 AI podcast, change instruction to "find an AI podcast" (singular). The instruction MUST be achievable with the available data - never ask for more items than exist!
+Values the agent discovers by browsing, searching, or filtering the website.
+These MUST NOT appear in the instruction — replace them with filtering criteria.
+
+Examples of discovery values:
+- Product/item names the agent should find: "Silicone Spatula Set", "Cedar Meeting Hub"
+- Internal IDs: prod_001, art_002, mr_003, b1, p5
+- Specific prices of items: $12.99 (the agent finds this by browsing)
+- Entity names found by sorting/filtering: "Laura Wilson" (highest-rated attorney)
+- Specific results the agent should discover through interaction
+
+### Type G — Given Values (arbitrary data the agent must type into forms)
+
+Values the agent must TYPE into a form field. The agent cannot guess or discover these
+from the website — they are arbitrary inputs. These MUST appear in the instruction.
+
+How to identify: the original step says "enter/type/input/fill in '...' in the ... field".
+
+Examples of given values:
+- Registration name/email: "Jordan Lee", "jordan.lee@example.com"
+- Review/comment/message text: "Great product, highly recommend"
+- Bio/profile text: "I am a community organizer focused on digital rights"
+- Petition signature details: name, city, email
+- Report/form descriptions the user writes
+- Contact information the user provides
+
+### Classification test
+Ask: "Can the agent figure out this value by looking at the website data?"
+- YES → Type D (discovery) — strip from instruction, put in discovery_targets
+- NO  → Type G (given) — KEEP in instruction, put in given_inputs
+
+## ADDITIONAL RULES
+
+1. **NEVER include internal IDs** — Users cannot see IDs like prod_001, art_002. This applies to both Type D and Type G values.
+2. **Be concise** — Single sentence preferred, no redundant explanations.
+3. **ADJUST QUANTITY based on actual data availability** — Count items in the provided data that match the task criteria. If the original task asks for N items but only M items exist, YOU MUST change the quantity to M. The instruction MUST be achievable with the available data.
+4. **Discovery dates** — For discovery values, use relative terms ("next month", "after 2023") instead of exact dates. For given values (dates the user types into a form), keep the exact date in the instruction.
+5. **All given_inputs values MUST appear verbatim in the instruction** — If a value is in given_inputs, the instruction MUST contain it so the agent knows what to type.
+6. **All ground_truth values MUST come from the original task steps or the provided data** — NEVER invent values that appear in neither the steps nor the data (no made-up timezones, booking IDs, or other fabricated values).
 
 ## EXAMPLE TRANSFORMATIONS
 
-| BAD instruction (reveals answer) | GOOD instruction (only criteria) |
-|----------------------------------|----------------------------------|
+### Discovery values → Strip and replace with criteria
+| BAD (reveals answer) | GOOD (criteria only) |
+|---|---|
 | Add Silicone Spatula Set (p1) at $12.99, Steel Cups (p2) at $19.49 to cart | Add any 3 Kitchen items under $25 with 4+ stars to cart |
 | Book Cedar Meeting Hub (mr_003) for Tomorrow Afternoon at $39 | Book any meeting room available tomorrow afternoon with free cancellation |
-| Download art_001, art_002, art_003 (Climate Change articles) | Download 3 climate change articles published after 2023 |
 | Compare PaceFlow 2 (comfort 4.8) vs AeroRun X (comfort 4.6) and add PaceFlow 2 | Compare two running shoes over $50 and add the one with higher comfort rating to cart |
 | Favorite the F-15EX review (rev_002) with rating 4.8 | Favorite the fighter jet review with the highest user rating |
-| Add 'Circuit Dreams' (b4) Hardcover Sci-Fi to wishlist | Add any hardcover Science Fiction book from 2019 to your wishlist |
+
+### Given values → KEEP in instruction
+| BAD (strips given values) | GOOD (preserves given values) |
+|---|---|
+| Register for the digital security training | Register for the digital security training scheduled for next month using name 'Jordan Lee' and email 'jordan.lee@example.com' |
+| Sign the freedom of expression petition | Sign the most-supported active freedom of expression petition in Latin America with name 'Alex Rivera', email 'alex.rivera@example.com', and city 'Buenos Aires' |
+| Submit an incident report about police violence | Submit an incident report about police violence in Lagos, entering name 'Anonymous Witness' and email 'anonymous.witness@example.com' |
+| Update your profile bio | Update your profile bio to 'I am a community organizer focused on digital rights and freedom of expression' |
 
 ## OUTPUT FORMAT
 
@@ -255,36 +312,42 @@ Return JSON with this structure:
   "rewritten_tasks": [
     {{
       "id": "task_1",
-      "instruction": "Concise task description with ONLY filtering criteria (no IDs, no specific names)",
+      "instruction": "Concise task description. Discovery values replaced with criteria. Given values (form inputs) included verbatim.",
       "ground_truth": {{
-        "target_ids": ["exact_id_1", "exact_id_2"],
-        "target_names": ["Exact Name 1", "Exact Name 2"],
-        "expected_values": {{
-          "prices": [12.99, 19.49],
-          "ratings": [4.5, 4.6]
+        "discovery_targets": {{
+          "target_ids": ["exact_id_1", "exact_id_2"],
+          "target_names": ["Exact Name 1", "Exact Name 2"],
+          "criteria": {{
+            "category": "Kitchen",
+            "max_price": 25,
+            "min_rating": 4.0,
+            "quantity": 3
+          }}
         }},
-        "criteria": {{
-          "category": "Kitchen",
-          "max_price": 25,
-          "min_rating": 4.0,
-          "quantity": 3
+        "given_inputs": {{
+          "registration_name": "Jordan Lee",
+          "registration_email": "jordan.lee@example.com"
         }}
       }}
     }}
   ]
 }}
 
-## VALIDATION CHECKLIST FOR EACH INSTRUCTION
+Notes on the schema:
+- **discovery_targets**: Items the agent must find. target_ids/target_names are for evaluator reference. criteria describes the filtering logic.
+- **given_inputs**: Values the agent must type. Every value here MUST appear in the instruction. Use descriptive keys (e.g., registration_name, review_text, bio_text). Leave as empty object {{}} if the task has no form inputs.
+
+## VALIDATION CHECKLIST
 
 Before finalizing each instruction, verify:
-- [ ] No parenthetical IDs like (p1), (prod_003), (art_001)
-- [ ] No exact product/item names that give away the answer
-- [ ] No exact prices like $12.99, only thresholds like "under $25"
-- [ ] No exact dates like "2025-11-28", only relative terms like "this Friday" or ranges like "after 2023"
-- [ ] The instruction reads naturally as if a human user wrote it
-- [ ] An agent must actually search/filter to find the right items
-
-IMPORTANT: The instruction should be something a real user would type, NOT an answer key.
+- [ ] No internal IDs like (p1), (prod_003), (art_001)
+- [ ] No discovery values (item names, prices) that the agent should find by browsing
+- [ ] Discovery values replaced with criteria (category, price range, rating threshold)
+- [ ] ALL given values (form inputs from original steps) ARE present in the instruction
+- [ ] Every value in given_inputs appears verbatim in the instruction
+- [ ] Quantity adjusted to match actual data availability
+- [ ] No fabricated values — everything in ground_truth comes from steps or data
+- [ ] The instruction reads naturally as a real user request
 """
 
         # Log API call
@@ -331,10 +394,25 @@ IMPORTANT: The instruction should be something a real user would type, NOT an an
                     desc = task.get("description", "")
                     task["instruction"] = name if name else desc
 
-                # Ensure ground_truth exists (new format)
+                # Ensure ground_truth exists with new schema
                 if "ground_truth" not in task:
-                    # Migrate from old data_mapping format
                     task["ground_truth"] = task.get("data_mapping", {})
+
+                gt = task["ground_truth"]
+
+                # Migrate flat ground_truth to new discovery_targets/given_inputs schema
+                if "discovery_targets" not in gt and "given_inputs" not in gt:
+                    # Old-format ground_truth — wrap into discovery_targets
+                    task["ground_truth"] = {
+                        "discovery_targets": {
+                            k: v for k, v in gt.items()
+                        },
+                        "given_inputs": {}
+                    }
+
+                # Ensure both sub-keys exist
+                task["ground_truth"].setdefault("discovery_targets", {})
+                task["ground_truth"].setdefault("given_inputs", {})
 
                 # Keep backward compatibility: also set name/description for old consumers
                 if "name" not in task:
@@ -362,7 +440,8 @@ IMPORTANT: The instruction should be something a real user would type, NOT an an
                                  rewritten_tasks: List[Dict[str, Any]],
                                  website_data: Dict[str, Any]) -> Tuple[bool, List[str]]:
         """
-        Validate that rewritten tasks reference actual data
+        Validate that rewritten tasks have correct structure, reference actual data,
+        and given_inputs values appear in instruction.
 
         Args:
             rewritten_tasks: Rewritten tasks to validate
@@ -376,70 +455,31 @@ IMPORTANT: The instruction should be something a real user would type, NOT an an
 
         for task in rewritten_tasks:
             task_id = task.get("id", "unknown")
+            instruction = task.get("instruction", "")
             ground_truth = task.get("ground_truth", {})
-            data_mapping = task.get("data_mapping", {})
+
+            if not isinstance(instruction, str) or not instruction.strip():
+                issues.append(f"Task {task_id}: Missing or empty instruction")
 
             if not isinstance(ground_truth, dict):
                 issues.append(f"Task {task_id}: ground_truth must be an object")
-                ground_truth = {}
-            if not isinstance(data_mapping, dict):
-                issues.append(f"Task {task_id}: data_mapping must be an object")
-                data_mapping = {}
+                continue
 
-            instruction = task.get("instruction", "")
-            if not isinstance(instruction, str) or not instruction.strip():
-                issues.append(f"Task {task_id}: Missing or empty instruction in rewritten task")
+            # Validate discovery_targets: check that target_ids reference real data
+            discovery = ground_truth.get("discovery_targets", {})
+            target_ids = discovery.get("target_ids", [])
+            for tid in target_ids:
+                if str(tid) not in entity_index:
+                    issues.append(f"Task {task_id}: target_id '{tid}' not found in website data")
 
-            if not ground_truth and not data_mapping:
-                issues.append(f"Task {task_id}: Missing ground_truth/data_mapping in rewritten task")
-
-            # Validate new ground_truth schema
-            target_ids = ground_truth.get("target_ids", [])
-            target_names = ground_truth.get("target_names", [])
-
-            for target_id in target_ids:
-                if target_id not in entity_index:
-                    issues.append(f"Task {task_id}: Target ID '{target_id}' not found in website data")
-
-            if target_ids and target_names and len(target_ids) == len(target_names):
-                for target_id, expected_name in zip(target_ids, target_names):
-                    entity = entity_index.get(target_id)
-                    if not entity:
-                        continue
-                    actual_name = self._extract_entity_display_name(entity)
-                    if actual_name and str(actual_name) != str(expected_name):
-                        issues.append(
-                            f"Task {task_id}: Target name mismatch for {target_id} "
-                            f"(expected: {expected_name}, actual: {actual_name})"
-                        )
-
-            # Check if referenced products exist
-            if "target_product_id" in data_mapping:
-                product_id = data_mapping["target_product_id"]
-                if "products" in website_data:
-                    product_found = any(
-                        p.get("id") == product_id
-                        for p in website_data["products"]
-                        if isinstance(p, dict)
+            # Validate given_inputs: each value must appear in the instruction
+            given_inputs = ground_truth.get("given_inputs", {})
+            for key, value in given_inputs.items():
+                if isinstance(value, str) and value not in instruction:
+                    issues.append(
+                        f"Task {task_id}: given_input '{key}' value '{value}' "
+                        f"not found in instruction"
                     )
-                    if not product_found:
-                        issues.append(f"Task {task_id}: Product ID '{product_id}' not found in data")
-
-            # Check if prices match
-            if "expected_price" in data_mapping and "target_product_id" in data_mapping:
-                product_id = data_mapping["target_product_id"]
-                expected_price = data_mapping["expected_price"]
-
-                if "products" in website_data:
-                    for p in website_data["products"]:
-                        if isinstance(p, dict) and p.get("id") == product_id:
-                            actual_price = p.get("price")
-                            if actual_price and float(actual_price) != float(expected_price):
-                                issues.append(
-                                    f"Task {task_id}: Price mismatch for {product_id} "
-                                    f"(expected: {expected_price}, actual: {actual_price})"
-                                )
-                            break
 
         is_valid = len(issues) == 0
         return is_valid, issues
@@ -454,11 +494,3 @@ IMPORTANT: The instruction should be something a real user would type, NOT an an
                 if isinstance(item, dict) and item.get("id"):
                     entity_index[str(item["id"])] = item
         return entity_index
-
-    def _extract_entity_display_name(self, entity: Dict[str, Any]) -> Optional[str]:
-        """Extract a best-effort human-readable name from an entity."""
-        for field in ["name", "title", "displayName", "headline", "subject"]:
-            value = entity.get(field)
-            if value:
-                return str(value)
-        return None

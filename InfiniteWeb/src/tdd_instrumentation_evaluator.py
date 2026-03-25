@@ -259,6 +259,25 @@ For each task, create an evaluator based on the instrumentation plan:
   - If objects like {{id, bookId, addedAt}}, use: favorites.some(f => f.bookId === id)
   - If strings, use: favorites.includes(id)
 
+**CRITICAL: Handling ground_truth Value Types**
+
+Each task's ground_truth has TWO sections with DIFFERENT validation strategies:
+
+**discovery_targets** — Items the agent must FIND by browsing/filtering:
+- Contains target_ids, target_names, and criteria
+- DO NOT hardcode target_ids in the evaluator — validate DYNAMICALLY against criteria
+- Example: instead of `selectedId === 'plan_003'`, check that the selected plan HAS roadside AND is the cheapest
+
+**given_inputs** — Arbitrary form values the agent was told to type (they appear in the instruction):
+- Contains values like registration_name, registration_email, review_text, bio_text
+- These values ARE in the instruction, so the agent knows them
+- For given_inputs: check that a record was CREATED (exists in localStorage) with reasonable content
+- DO NOT hardcode given_input values — check STRUCTURALLY:
+  - GOOD: `registrations.some(r => r.fullName && r.email)` (check a registration was created)
+  - GOOD: `registrations.some(r => r.fullName.length > 0 && r.email.includes('@'))` (structural check)
+  - BAD: `r.fullName === 'Jordan Lee' && r.email === 'jordan.lee@example.com'` (hardcoded values)
+- WHY: Even though given values are in the instruction, the agent may use slight variations. Structural checks are more robust.
+
 All evaluators must:
 - Check if the variables exist in localStorage
 - Use the EXACT data structure from the business logic implementation
