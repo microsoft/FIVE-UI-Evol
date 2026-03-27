@@ -244,51 +244,48 @@ DATA ANALYSIS:
 ## VALUE CLASSIFICATION (CRITICAL — Read This First)
 
 Every concrete value in the original task steps belongs to one of TWO types.
-You MUST classify each value correctly before writing the instruction.
+You MUST classify each value by analyzing the SEMANTIC ROLE of each step.
 
-### Type D — Discovery Values (the "answer" the agent must find)
+### How to classify: analyze what each step DOES
 
-Values the agent discovers by browsing, searching, or filtering the website.
-These MUST NOT appear in the instruction — replace them with filtering criteria.
+For each step, ask: **"Is this step FINDING existing content on the website, or PROVIDING new data to the website?"**
 
-Examples of discovery values:
-- Product/item names the agent should find: "Silicone Spatula Set", "Cedar Meeting Hub"
-- Internal IDs: prod_001, art_002, mr_003, b1, p5
-- Specific prices of items: $12.99 (the agent finds this by browsing)
-- Entity names found by sorting/filtering: "Laura Wilson" (highest-rated attorney)
-- Specific results the agent should discover through interaction
+**FINDING steps → values are Type D (Discovery)**
+Steps where the agent navigates, searches, filters, sorts, selects, or browses existing website content.
+The values in these steps describe WHAT to look for — they are search/filter criteria.
+- Navigating: "Click on the Events & Trainings section"
+- Filtering: "Open the Format dropdown and select 'Online / Virtual'"
+- Searching: "Type 'running shoes' in the search bar and press Enter"
+- Sorting: "Select 'Rating – High to Low' from the Sort by dropdown"
+- Selecting from existing options: "Choose 'Italian' from the cuisine list"
+- Selecting from autocomplete: "Type 'Brazil' and select it from suggestions"
 
-### Type G — Given Values (arbitrary data the agent must type into forms)
+**PROVIDING steps → values are Type G (Given)**
+Steps where the agent fills in a form, writes content, names something, or submits new data.
+The values in these steps are arbitrary user input — they do NOT exist on the website.
+- Form filling: "Enter 'Jordan Lee' in the name field"
+- Writing content: "Type a review: 'The handmade pasta was exceptional'"
+- Naming/creating: "Name the playlist 'Evening Jazz'"
+- Composing messages: "Write 'I would like to schedule a viewing this weekend'"
+- Setting user preferences: "Enter '250' as the transfer amount"
+- Selecting options in a creation/submission form: "Select 'Nigeria' from the Country dropdown on the incident report form"
 
-Values the agent provides as arbitrary input. The agent cannot discover these
-from the website. These MUST appear in the instruction.
+### Type D — Discovery Values
+Values from FINDING steps. These MUST NOT appear in the instruction — replace with criteria.
+Note: this includes specific prices ($12.99), entity names found by sorting/filtering ("Laura Wilson" — the highest-rated attorney), and internal IDs (prod_001).
 
-How to classify — use these signals IN PRIORITY ORDER (stop at the first conclusive match):
+### Type G — Given Values
+Values from PROVIDING steps. These MUST appear verbatim in the instruction.
 
-**Signal 1 (strongest): Target UI element mentioned in the step**
-- "in the name/email/password/address/comment/bio field" or "in the text area" → GIVEN
-- "from the dropdown/list/options" or "select ... from" → DISCOVERY
-- "in the search bar/search field" + "press Enter" → DISCOVERY (search query, NOT given)
+### Key distinction for ambiguous cases
+"type" and "enter" appear in BOTH finding and providing steps. Do NOT classify by verb.
+Instead, ask: **"Is this value being used to LOCATE existing content, or to CREATE/SUBMIT new data?"**
+- "Type 'running shoes' in the search bar" → locating content → Type D
+- "Type 'Jordan Lee' in the registration name field" → submitting new data → Type G
+- "Select 'Weekly' from the frequency dropdown" in a filter panel → locating content → Type D
+- "Select 'Weekly' from the frequency dropdown" in an alert creation form → providing new data → Type G
 
-**Signal 2: Value format (apply only when Signal 1 is inconclusive)**
-- Contains @ (email) → GIVEN
-- Full sentence (>8 words) → GIVEN
-- Phone number, street address, username/password → GIVEN
-- Single taxonomy/category word (e.g., "Rock", "Comedy", "Tennis") → DISCOVERY
-
-**Signal 3: Surrounding step context**
-- Followed by "select from suggestions/autocomplete" → DISCOVERY (typed to search, then selected)
-- Preceded by "Click Register/Sign Up/Submit" → GIVEN (form fill sequence)
-- Step mentions "to filter/narrow results" → DISCOVERY
-- Step uses a date/time as a filter for existing data ("published after 2023") → DISCOVERY
-
-**CRITICAL: "type" and "enter" verbs are NOT reliable signals.**
-49% of "type" instances are search queries, not form data. Always check the TARGET ELEMENT first.
-
-### Classification test (when signals above are inconclusive)
-Ask: "Could the agent use ANY arbitrary value here and still complete the task?"
-- YES (the value is user's free choice) → Type G (given) — KEEP in instruction
-- NO (the value must match something on the site) → Type D (discovery) — strip from instruction
+When the classification is still unclear, ask: "Could the agent use ANY arbitrary value here and still complete the task?" If YES → Type G. If NO → Type D.
 
 ## ADDITIONAL RULES
 
@@ -353,13 +350,12 @@ Notes on the schema:
 
 Before finalizing each instruction, verify:
 - [ ] No internal IDs like (p1), (prod_003), (art_001)
-- [ ] No discovery values (item names, prices) that the agent should find by browsing
-- [ ] Discovery values replaced with criteria (category, price range, rating threshold)
-- [ ] ALL given values (form inputs from original steps) ARE present in the instruction
+- [ ] Values from FINDING steps (search, filter, sort, select) are NOT in the instruction or given_inputs
+- [ ] Values from FINDING steps are replaced with criteria (category, price range, rating threshold)
+- [ ] ALL values from PROVIDING steps (form fill, create, compose) ARE present in the instruction
 - [ ] Every value in given_inputs appears verbatim in the instruction
 - [ ] Quantity adjusted to match actual data availability
 - [ ] No fabricated values — everything in ground_truth comes from steps or data
-- [ ] Search/filter criteria (search bar queries, dropdown selections, filter values) are NOT in given_inputs
 - [ ] The instruction reads naturally as a real user request
 """
 
