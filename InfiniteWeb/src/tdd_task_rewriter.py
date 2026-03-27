@@ -244,46 +244,21 @@ DATA ANALYSIS:
 ## VALUE CLASSIFICATION (CRITICAL — Read This First)
 
 Every concrete value in the original task steps belongs to one of TWO types.
-You MUST classify each value by analyzing the SEMANTIC ROLE of each step.
-
-### How to classify: analyze what each step DOES
-
 For each step, ask: **"Is this step FINDING existing content on the website, or PROVIDING new data to the website?"**
 
-**FINDING steps → values are Type D (Discovery)**
-Steps where the agent navigates, searches, filters, sorts, selects, or browses existing website content.
-The values in these steps describe WHAT to look for — they are search/filter criteria.
-- Navigating: "Click on the Events & Trainings section"
-- Filtering: "Open the Format dropdown and select 'Online / Virtual'"
-- Searching: "Type 'running shoes' in the search bar and press Enter"
-- Sorting: "Select 'Rating – High to Low' from the Sort by dropdown"
-- Selecting from existing options: "Choose 'Italian' from the cuisine list"
-- Selecting from autocomplete: "Type 'Brazil' and select it from suggestions"
-
-**PROVIDING steps → values are Type G (Given)**
-Steps where the agent fills in a form, writes content, names something, or submits new data.
-The values in these steps are arbitrary user input — they do NOT exist on the website.
-- Form filling: "Enter 'Jordan Lee' in the name field"
-- Writing content: "Type a review: 'The handmade pasta was exceptional'"
-- Naming/creating: "Name the playlist 'Evening Jazz'"
-- Composing messages: "Write 'I would like to schedule a viewing this weekend'"
-- Setting user preferences: "Enter '250' as the transfer amount"
-- Selecting options in a creation/submission form: "Select 'Nigeria' from the Country dropdown on the incident report form"
-
 ### Type D — Discovery Values
-Values from FINDING steps. These MUST NOT appear in the instruction — replace with criteria.
-Note: this includes specific prices ($12.99), entity names found by sorting/filtering ("Laura Wilson" — the highest-rated attorney), and internal IDs (prod_001).
+Values from steps where the agent navigates, searches, filters, sorts, or selects existing website content.
+These MUST NOT appear in the instruction — replace them with filtering criteria.
+This includes specific prices ($12.99), entity names found by sorting/filtering ("Laura Wilson" — the highest-rated attorney), internal IDs (prod_001), search queries, and filter/dropdown selections used to narrow results.
 
 ### Type G — Given Values
-Values from PROVIDING steps. These MUST appear verbatim in the instruction.
+Values from steps where the agent fills in a form, writes content, names something, or submits new data that does NOT already exist on the website.
+These MUST appear verbatim in the instruction.
 
-### Key distinction for ambiguous cases
-"type" and "enter" appear in BOTH finding and providing steps. Do NOT classify by verb.
-Instead, ask: **"Is this value being used to LOCATE existing content, or to CREATE/SUBMIT new data?"**
+### Ambiguous verbs
+"type" and "enter" appear in BOTH types of steps. Do NOT classify by verb — classify by whether the value is used to LOCATE existing content (Type D) or to CREATE/SUBMIT new data (Type G).
 - "Type 'running shoes' in the search bar" → locating content → Type D
 - "Type 'Jordan Lee' in the registration name field" → submitting new data → Type G
-- "Select 'Weekly' from the frequency dropdown" in a filter panel → locating content → Type D
-- "Select 'Weekly' from the frequency dropdown" in an alert creation form → providing new data → Type G
 
 When the classification is still unclear, ask: "Could the agent use ANY arbitrary value here and still complete the task?" If YES → Type G. If NO → Type D.
 
