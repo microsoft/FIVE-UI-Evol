@@ -266,12 +266,17 @@ from the website — they are arbitrary inputs. These MUST appear in the instruc
 How to identify: the original step says "enter/type/input/fill in '...' in the ... field".
 
 Examples of given values:
-- Registration name/email: "Jordan Lee", "jordan.lee@example.com"
-- Review/comment/message text: "Great product, highly recommend"
+- Registration/contact info: "Jordan Lee", "jordan.lee@example.com"
+- Review/comment text: "The handmade pasta was exceptional"
+- Names for user-created content: playlist named "Evening Jazz", project titled "Q2 Report"
+- Message/email body: "I would like to schedule a viewing this weekend"
 - Bio/profile text: "I am a community organizer focused on digital rights"
-- Petition signature details: name, city, email
-- Report/form descriptions the user writes
-- Contact information the user provides
+- Dates the user freely CHOOSES for an action: booking date "March 15", appointment time "2:00 PM"
+
+NOT given values (these are discovery criteria even if typed into a search/filter field):
+- Search terms describing what to find: "running shoes" in a search bar → Type D criterion
+- Filter values selecting from existing categories: "Italian" in a cuisine dropdown → Type D criterion
+- Dates describing when something EXISTS on the site: "after 2023" for publication date → Type D criterion
 
 ### Classification test
 Ask: "Can the agent figure out this value by looking at the website data?"
@@ -301,9 +306,9 @@ Ask: "Can the agent figure out this value by looking at the website data?"
 | BAD (strips given values) | GOOD (preserves given values) |
 |---|---|
 | Register for the digital security training | Register for the digital security training scheduled for next month using name 'Jordan Lee' and email 'jordan.lee@example.com' |
-| Sign the freedom of expression petition | Sign the most-supported active freedom of expression petition in Latin America with name 'Alex Rivera', email 'alex.rivera@example.com', and city 'Buenos Aires' |
-| Submit an incident report about police violence | Submit an incident report about police violence in Lagos, entering name 'Anonymous Witness' and email 'anonymous.witness@example.com' |
-| Update your profile bio | Update your profile bio to 'I am a community organizer focused on digital rights and freedom of expression' |
+| Write a review for the top-rated restaurant | Write a 5-star review for the top-rated Italian restaurant with the comment 'The handmade pasta was exceptional' |
+| Create a new playlist and add 3 jazz songs | Create a playlist named 'Evening Jazz' and add 3 jazz songs with 4+ star rating |
+| Send a message to the property manager about the apartment | Send a message to the manager of the most affordable downtown apartment saying 'I would like to schedule a viewing this weekend' |
 
 ## OUTPUT FORMAT
 
@@ -334,8 +339,8 @@ Return JSON with this structure:
 }}
 
 Notes on the schema:
-- **discovery_targets**: Items the agent must find. target_ids/target_names are for evaluator reference. criteria describes the filtering logic.
-- **given_inputs**: Values the agent must type. Every value here MUST appear in the instruction. Use descriptive keys (e.g., registration_name, review_text, bio_text). Leave as empty object {{}} if the task has no form inputs.
+- **discovery_targets**: Items the agent must find. target_ids/target_names are for evaluator reference. criteria describes the filtering logic. Leave as empty object {{}} if the task has no discovery component (e.g., pure form-filling).
+- **given_inputs**: Values the agent must type. Every value here MUST appear in the instruction. Use descriptive keys (e.g., registration_name, review_text, playlist_name, message_body). Leave as empty object {{}} if the task has no form inputs.
 
 ## VALIDATION CHECKLIST
 
