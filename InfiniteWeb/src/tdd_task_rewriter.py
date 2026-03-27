@@ -243,24 +243,21 @@ DATA ANALYSIS:
 {datadict_section}
 ## VALUE CLASSIFICATION (CRITICAL — Read This First)
 
-Every concrete value in the original task steps belongs to one of TWO types.
-For each step, ask: **"Is this step FINDING existing content on the website, or PROVIDING new data to the website?"**
+Every concrete value in the original task steps belongs to one of TWO types:
 
-### Type D — Discovery Values
-Values from steps where the agent navigates, searches, filters, sorts, or selects existing website content.
-These MUST NOT appear in the instruction — replace them with filtering criteria.
-This includes specific prices ($12.99), entity names found by sorting/filtering ("Laura Wilson" — the highest-rated attorney), internal IDs (prod_001), search queries, and filter/dropdown selections used to narrow results.
+### Type D — Discovery Values (STRIP from instruction)
+The step is locating existing content on the website — navigating, searching, filtering, sorting, or selecting.
+Replace these values with filtering criteria. This includes specific prices ($12.99), entity names found by sorting/filtering ("Laura Wilson" — the highest-rated attorney), internal IDs (prod_001), search queries, and filter/dropdown selections used to narrow results.
 
-### Type G — Given Values
-Values from steps where the agent fills in a form, writes content, names something, or submits new data that does NOT already exist on the website.
-These MUST appear verbatim in the instruction.
+### Type G — Given Values (KEEP in instruction verbatim)
+The step is creating/submitting new data that does NOT already exist on the website — filling a form, writing content, naming something, or composing a message.
 
-### Ambiguous verbs
-"type" and "enter" appear in BOTH types of steps. Do NOT classify by verb — classify by whether the value is used to LOCATE existing content (Type D) or to CREATE/SUBMIT new data (Type G).
-- "Type 'running shoes' in the search bar" → locating content → Type D
-- "Type 'Jordan Lee' in the registration name field" → submitting new data → Type G
+### Note on ambiguous verbs
+"type" and "enter" appear in BOTH types. Classify by purpose, not verb:
+- "Type 'running shoes' in the search bar" → locating existing content → Type D
+- "Type 'Jordan Lee' in the registration form" → submitting new data → Type G
 
-When the classification is still unclear, ask: "Could the agent use ANY arbitrary value here and still complete the task?" If YES → Type G. If NO → Type D.
+Fallback: "Could the agent use ANY arbitrary value here?" If YES → Type G. If NO → Type D.
 
 ## ADDITIONAL RULES
 
