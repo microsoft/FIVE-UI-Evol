@@ -260,28 +260,35 @@ Examples of discovery values:
 
 ### Type G — Given Values (arbitrary data the agent must type into forms)
 
-Values the agent must TYPE into a form field. The agent cannot guess or discover these
-from the website — they are arbitrary inputs. These MUST appear in the instruction.
+Values the agent provides as arbitrary input. The agent cannot discover these
+from the website. These MUST appear in the instruction.
 
-How to identify: the original step says "enter/type/input/fill in '...' in the ... field".
+How to classify — use these signals IN PRIORITY ORDER (stop at the first conclusive match):
 
-Examples of given values:
-- Registration/contact info: "Jordan Lee", "jordan.lee@example.com"
-- Review/comment text: "The handmade pasta was exceptional"
-- Names for user-created content: playlist named "Evening Jazz", project titled "Q2 Report"
-- Message/email body: "I would like to schedule a viewing this weekend"
-- Bio/profile text: "I am a community organizer focused on digital rights"
-- Dates the user freely CHOOSES for an action: booking date "March 15", appointment time "2:00 PM"
+**Signal 1 (strongest): Target UI element mentioned in the step**
+- "in the name/email/password/address/comment/bio field" or "in the text area" → GIVEN
+- "from the dropdown/list/options" or "select ... from" → DISCOVERY
+- "in the search bar/search field" + "press Enter" → DISCOVERY (search query, NOT given)
 
-NOT given values (these are discovery criteria even if typed into a search/filter field):
-- Search terms describing what to find: "running shoes" in a search bar → Type D criterion
-- Filter values selecting from existing categories: "Italian" in a cuisine dropdown → Type D criterion
-- Dates describing when something EXISTS on the site: "after 2023" for publication date → Type D criterion
+**Signal 2: Value format (apply only when Signal 1 is inconclusive)**
+- Contains @ (email) → GIVEN
+- Full sentence (>8 words) → GIVEN
+- Phone number, street address, username/password → GIVEN
+- Single taxonomy/category word (e.g., "Rock", "Comedy", "Tennis") → DISCOVERY
 
-### Classification test
-Ask: "Can the agent figure out this value by looking at the website data?"
-- YES → Type D (discovery) — strip from instruction, put in discovery_targets
-- NO  → Type G (given) — KEEP in instruction, put in given_inputs
+**Signal 3: Surrounding step context**
+- Followed by "select from suggestions/autocomplete" → DISCOVERY (typed to search, then selected)
+- Preceded by "Click Register/Sign Up/Submit" → GIVEN (form fill sequence)
+- Step mentions "to filter/narrow results" → DISCOVERY
+- Step uses a date/time as a filter for existing data ("published after 2023") → DISCOVERY
+
+**CRITICAL: "type" and "enter" verbs are NOT reliable signals.**
+49% of "type" instances are search queries, not form data. Always check the TARGET ELEMENT first.
+
+### Classification test (when signals above are inconclusive)
+Ask: "Could the agent use ANY arbitrary value here and still complete the task?"
+- YES (the value is user's free choice) → Type G (given) — KEEP in instruction
+- NO (the value must match something on the site) → Type D (discovery) — strip from instruction
 
 ## ADDITIONAL RULES
 
@@ -352,6 +359,7 @@ Before finalizing each instruction, verify:
 - [ ] Every value in given_inputs appears verbatim in the instruction
 - [ ] Quantity adjusted to match actual data availability
 - [ ] No fabricated values — everything in ground_truth comes from steps or data
+- [ ] Search/filter criteria (search bar queries, dropdown selections, filter values) are NOT in given_inputs
 - [ ] The instruction reads naturally as a real user request
 """
 
