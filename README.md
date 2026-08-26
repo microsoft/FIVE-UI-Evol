@@ -2,7 +2,7 @@
 
 ## Content
 
-+ InfiniteWeb: Scalable Web Environment Synthesis for GUI Agent Training.
++ InfiniteWeb(ACL Main 2026): Scalable Web Environment Synthesis for GUI Agent Training.
 
 + UI-E2I-Synth (ACL Findings 2025): Challenging GUI-Grounding Benchmark and Complex Instruction Synthesis.
 
